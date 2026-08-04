@@ -149,6 +149,11 @@
     const hint = document.getElementById("cfgHint");
     if (cfg.diagnostics) hint.textContent = cfg.diagnostics;
 
+    if (cfg.problem) {
+      document.getElementById("err").textContent = cfg.problem;
+      if (cfg.diagnostics) hint.textContent = cfg.diagnostics;
+      return;
+    }
     if (cfg.configured && cfg.pairOk === false) {
       document.getElementById("err").textContent =
         "MP_PUBLIC_KEY y MP_ACCESS_TOKEN no son del mismo tipo (uno es TEST- y el otro APP_USR-). Pegá el par de Pruebas en .env y reiniciá.";

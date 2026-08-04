@@ -23,9 +23,10 @@ public class PaymentsApiController : ControllerBase
     {
         configured = _payments.IsMercadoPagoConfigured(),
         simulate = _payments.AllowSimulatePayments(),
-        publicKey = _payments.GetPublicKey(),
+        publicKey = _payments.IsMercadoPagoConfigured() ? _payments.GetPublicKey() : null,
         testCredentials = _payments.IsTestCredentials(),
         pairOk = _payments.CredentialsPairLooksConsistent(),
+        problem = _payments.CredentialProblem(),
         diagnostics = _payments.CredentialDiagnostics(),
         webhookUrl = _payments.IsMercadoPagoConfigured() ? _payments.WebhookUrl : null,
     });
@@ -46,6 +47,13 @@ public class PaymentsApiController : ControllerBase
         try
         {
             var order = await _store.CreatePendingOrderAsync(userId, course.Id, course.Price, course.Currency);
+            var credProblem = _payments.CredentialProblem();
+            if (credProblem != null && !_payments.IsMercadoPagoConfigured())
+            {
+                // Claves mal formadas (ej. TEST-APP_USR-) → no llamar a MP
+                if (!_payments.AllowSimulatePayments())
+                    return BadRequest(new { error = credProblem, diagnostics = _payments.CredentialDiagnostics() });
+            }
             if (!_payments.IsMercadoPagoConfigured())
             {
                 return Ok(new

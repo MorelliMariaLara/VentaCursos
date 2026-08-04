@@ -23,22 +23,48 @@ public class PaymentService
         !string.IsNullOrWhiteSpace(AccessToken) &&
         !string.IsNullOrWhiteSpace(PublicKey) &&
         !PublicKey!.Contains("xxxxxxxx", StringComparison.OrdinalIgnoreCase) &&
-        !AccessToken!.Contains("xxxxxxxx", StringComparison.OrdinalIgnoreCase);
+        !AccessToken!.Contains("xxxxxxxx", StringComparison.OrdinalIgnoreCase) &&
+        !HasMalformedTestAppUsrPrefix();
+
+    /// <summary>
+    /// Error típico: pegar "TEST-" delante de una clave APP_USR → "TEST-APP_USR-...".
+    /// Eso no es una credencial válida de Mercado Pago.
+    /// </summary>
+    public bool HasMalformedTestAppUsrPrefix() =>
+        (PublicKey?.Contains("TEST-APP_USR", StringComparison.OrdinalIgnoreCase) ?? false) ||
+        (AccessToken?.Contains("TEST-APP_USR", StringComparison.OrdinalIgnoreCase) ?? false);
 
     /// <summary>Credenciales de prueba (TEST-...) → usar sandbox_init_point.</summary>
     public bool IsTestCredentials() =>
-        (PublicKey?.StartsWith("TEST-", StringComparison.OrdinalIgnoreCase) ?? false) ||
-        (AccessToken?.StartsWith("TEST-", StringComparison.OrdinalIgnoreCase) ?? false);
+        !HasMalformedTestAppUsrPrefix() &&
+        ((PublicKey?.StartsWith("TEST-", StringComparison.OrdinalIgnoreCase) ?? false) ||
+         (AccessToken?.StartsWith("TEST-", StringComparison.OrdinalIgnoreCase) ?? false));
 
     /// <summary>Public Key y Access Token deben ser del mismo entorno (ambos TEST- o ambos APP_USR-).</summary>
     public bool CredentialsPairLooksConsistent()
     {
         if (!IsMercadoPagoConfigured()) return false;
+        if (HasMalformedTestAppUsrPrefix()) return false;
         var pkTest = PublicKey!.StartsWith("TEST-", StringComparison.OrdinalIgnoreCase);
         var tkTest = AccessToken!.StartsWith("TEST-", StringComparison.OrdinalIgnoreCase);
         var pkApp = PublicKey.StartsWith("APP_USR-", StringComparison.OrdinalIgnoreCase);
         var tkApp = AccessToken.StartsWith("APP_USR-", StringComparison.OrdinalIgnoreCase);
         return (pkTest && tkTest) || (pkApp && tkApp);
+    }
+
+    public string? CredentialProblem()
+    {
+        if (HasMalformedTestAppUsrPrefix())
+        {
+            return "Tus claves empiezan con TEST-APP_USR-… Eso está mal: no le agregues \"TEST-\" a una clave APP_USR. " +
+                   "En Tus integraciones → Pruebas copiá el par que ya empieza con TEST- (ej: TEST-de2c8c3d-… y TEST-2564…). " +
+                   "Pegalo tal cual en .env, guardá y reiniciá.";
+        }
+        if (string.IsNullOrWhiteSpace(PublicKey) || string.IsNullOrWhiteSpace(AccessToken))
+            return "Faltan MP_PUBLIC_KEY o MP_ACCESS_TOKEN en .env";
+        if (!CredentialsPairLooksConsistent())
+            return "MP_PUBLIC_KEY y MP_ACCESS_TOKEN no son del mismo tipo (mezcla TEST- con APP_USR-).";
+        return null;
     }
 
     public bool AllowSimulatePayments()

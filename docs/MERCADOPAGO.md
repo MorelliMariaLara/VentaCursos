@@ -39,12 +39,13 @@ MP_ALLOW_SIMULATE=false
 
 Causas frecuentes:
 
-1. **Public Key y Access Token de apps distintas** → copiá ambas de la misma aplicación (Pruebas).
-2. **Mezclar `TEST-` con `APP_USR-`** → tienen que ser el mismo par (ambos TEST o ambos producción).
-3. **Variables viejas en Windows/IDE** → antes el `.env` no pisaba el entorno; ahora sí. Cerrá la app y abrila de nuevo; en la consola debe decir `PK=TEST-…` y `TK=TEST-…`.
-4. **Espacios al pegar** el token → una sola línea, sin comillas.
-5. **Webhook a localhost** → en local la app ya **no envía** `notification_url`.
-6. No reiniciaste la app después de `git pull` / editar `.env`.
+1. **No inventes el prefijo** → si la clave ya es `APP_USR-…`, **no** le pongas `TEST-` adelante (`TEST-APP_USR-…` es inválido y da 403).
+2. Credenciales de **Pruebas** ya vienen como `TEST-de2c…` / `TEST-2564…` (o similares). Pegá **tal cual** desde el panel.
+3. **Public Key y Access Token de la misma app** (Pruebas).
+4. **Variables viejas en Windows/IDE** → cerrá la app y abrila de nuevo; consola: `PK=TEST-de2c…` (no `TEST-APP_U…`).
+5. **Espacios al pegar** el token → una sola línea, sin comillas.
+6. **Webhook a localhost** → omitido en local.
+7. No reiniciaste después de `git pull` / editar `.env`.
 
 Solución rápida:
 
