@@ -48,7 +48,9 @@ public static class VideoSources
     public static string? YouTubeEmbedUrl(string? sourceUrl)
     {
         var id = YouTubeId(sourceUrl);
-        return string.IsNullOrEmpty(id) ? null : $"https://www.youtube.com/embed/{id}?rel=0";
+        return string.IsNullOrEmpty(id)
+            ? null
+            : $"https://www.youtube.com/embed/{id}?rel=0&enablejsapi=1";
     }
 
     public static string? LocalFileName(string? sourceUrl)

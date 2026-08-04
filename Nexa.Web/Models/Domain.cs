@@ -55,9 +55,41 @@ public class Enrollment
     public string CourseId { get; set; } = "";
     public string PurchasedAt { get; set; } = "";
     public Dictionary<string, bool> Progress { get; set; } = new();
+    public Dictionary<string, bool> VideoWatched { get; set; } = new();
+    public Dictionary<string, bool> QuizPassed { get; set; } = new();
     public string? OrderId { get; set; }
     public string? CertificateCode { get; set; }
     public string? CertificateIssuedAt { get; set; }
+}
+
+public class LessonQuestion
+{
+    public string Id { get; set; } = "";
+    public string LessonId { get; set; } = "";
+    public string Prompt { get; set; } = "";
+    public int SortOrder { get; set; }
+    public List<LessonAnswerOption> Answers { get; set; } = new();
+}
+
+public class LessonAnswerOption
+{
+    public string Id { get; set; } = "";
+    public string Text { get; set; } = "";
+    public bool IsCorrect { get; set; }
+    public int SortOrder { get; set; }
+}
+
+public class QuizSubmitResult
+{
+    public int Score { get; set; }
+    public int Total { get; set; }
+    public decimal LessonPercent { get; set; }
+    public bool LessonPassed { get; set; }
+    public decimal CoursePercent { get; set; }
+    public bool CourseApproved { get; set; }
+    public bool MustRestart { get; set; }
+    public Enrollment Enrollment { get; set; } = new();
+    public string Message { get; set; } = "";
 }
 
 public class Order

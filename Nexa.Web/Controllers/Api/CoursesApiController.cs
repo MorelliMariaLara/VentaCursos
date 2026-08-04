@@ -88,6 +88,15 @@ public class CoursesApiController : ControllerBase
         {
             return StatusCode(403, new { error = "Sin acceso" });
         }
+        catch (InvalidOperationException ex) when (ex.Message is "QUIZ_REQUIRED" or "VIDEO_REQUIRED")
+        {
+            return BadRequest(new
+            {
+                error = ex.Message == "VIDEO_REQUIRED"
+                    ? "Tenés que ver el video completo."
+                    : "Tenés que aprobar el cuestionario de la lección (60%).",
+            });
+        }
     }
 
     public record ProgressBody(string? Slug, string? LessonId);

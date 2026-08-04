@@ -61,6 +61,7 @@ public class LessonEntity
     public string SourceUrl { get; set; } = "";
     public int Order { get; set; }
     public CourseModuleEntity? Module { get; set; }
+    public List<LessonQuestionEntity> Questions { get; set; } = new();
 }
 
 public class OrderEntity
@@ -97,7 +98,52 @@ public class EnrollmentProgressEntity
 {
     public string EnrollmentId { get; set; } = "";
     public string LessonId { get; set; } = "";
-    public bool Completed { get; set; } = true;
+    public bool Completed { get; set; }
+    public bool VideoWatched { get; set; }
+    public bool QuizPassed { get; set; }
     public DateTime CompletedAt { get; set; }
     public EnrollmentEntity? Enrollment { get; set; }
+}
+
+public class LessonQuestionEntity
+{
+    public string Id { get; set; } = "";
+    public string LessonId { get; set; } = "";
+    public string Prompt { get; set; } = "";
+    public int SortOrder { get; set; }
+    public LessonEntity? Lesson { get; set; }
+    public List<LessonAnswerEntity> Answers { get; set; } = new();
+}
+
+public class LessonAnswerEntity
+{
+    public string Id { get; set; } = "";
+    public string QuestionId { get; set; } = "";
+    public string Text { get; set; } = "";
+    public bool IsCorrect { get; set; }
+    public int SortOrder { get; set; }
+    public LessonQuestionEntity? Question { get; set; }
+}
+
+public class QuizAttemptEntity
+{
+    public string Id { get; set; } = "";
+    public string EnrollmentId { get; set; } = "";
+    public string LessonId { get; set; } = "";
+    public int Score { get; set; }
+    public int Total { get; set; }
+    public decimal PercentScore { get; set; }
+    public bool Passed { get; set; }
+    public DateTime AttemptedAt { get; set; }
+    public EnrollmentEntity? Enrollment { get; set; }
+    public List<QuizAttemptAnswerEntity> Answers { get; set; } = new();
+}
+
+public class QuizAttemptAnswerEntity
+{
+    public string AttemptId { get; set; } = "";
+    public string QuestionId { get; set; } = "";
+    public string AnswerId { get; set; } = "";
+    public bool IsCorrect { get; set; }
+    public QuizAttemptEntity? Attempt { get; set; }
 }

@@ -3,6 +3,8 @@
     ViewData["Title"] = "Aula";
     var c = Model.Course;
     var progress = Model.Enrollment.Progress ?? new Dictionary<string, bool>();
+    var watched = Model.Enrollment.VideoWatched ?? new Dictionary<string, bool>();
+    var quizPassed = Model.Enrollment.QuizPassed ?? new Dictionary<string, bool>();
 }
 <section class="section">
     <div class="wrap grid-2">
@@ -11,13 +13,20 @@
             <p class="lead" id="lessonTitle">Elegí una lección</p>
             <div class="player-shell">
                 <video id="video" controls controlsList="nodownload" disablePictureInPicture playsinline style="display:none"></video>
-                <iframe id="ytFrame" title="YouTube" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                        allowfullscreen referrerpolicy="strict-origin-when-cross-origin"
-                        style="display:none;width:100%;aspect-ratio:16/9;border:0;background:#000"></iframe>
+                <div id="ytWrap" style="display:none;width:100%;aspect-ratio:16/9;background:#000">
+                    <div id="ytPlayer"></div>
+                </div>
                 <div class="watermark" id="wm"></div>
             </div>
-            <button class="btn btn-primary" id="completeBtn" type="button" style="margin-top:0.8rem" disabled>Marcar lección completa</button>
-            <p class="hint" id="msg"></p>
+            <p class="hint" id="msg" style="margin-top:0.6rem"></p>
+            <p class="ok" id="okMsg" style="display:none"></p>
+
+            <div id="quizBox" class="panel" style="display:none;margin-top:1rem">
+                <h3 style="margin-top:0">Cuestionario</h3>
+                <p class="hint">Respondé después de ver el video completo. Para aprobar el curso necesitás al menos 60% de respuestas correctas.</p>
+                <form id="quizForm"></form>
+                <button class="btn btn-primary" id="submitQuizBtn" type="button" style="margin-top:0.8rem">Enviar respuestas</button>
+            </div>
         </div>
         <aside class="panel">
             <h3 style="margin-top:0">Lecciones</h3>
@@ -47,58 +56,220 @@
 </section>
 @section Scripts {
 <script src="~/js/player.js" asp-append-version="true"></script>
+<script src="https://www.youtube.com/iframe_api"></script>
 <script>
   const slug = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(c.Slug));
   let currentLesson = null;
   let progress = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(progress));
+  let watchedMap = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(watched));
+  let quizPassedMap = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(quizPassed));
   const videoEl = document.getElementById("video");
-  const ytFrame = document.getElementById("ytFrame");
+  const ytWrap = document.getElementById("ytWrap");
+  const quizBox = document.getElementById("quizBox");
+  const quizForm = document.getElementById("quizForm");
+  const msg = document.getElementById("msg");
+  const okMsg = document.getElementById("okMsg");
+  let ytPlayer = null;
+  let ytReady = false;
+  let pendingYtId = null;
+  let watchReported = false;
 
   document.addEventListener("contextmenu", (e) => e.preventDefault());
 
-  function showLocal() {
-    videoEl.style.display = "block";
-    ytFrame.style.display = "none";
-    ytFrame.src = "";
+  window.onYouTubeIframeAPIReady = function () {
+    ytReady = true;
+    if (pendingYtId) mountYt(pendingYtId);
+  };
+
+  function setMsg(text, ok) {
+    msg.textContent = ok ? "" : (text || "");
+    okMsg.style.display = ok && text ? "block" : "none";
+    if (ok) okMsg.textContent = text || "";
   }
-  function showYoutube(url) {
+
+  function hidePlayers() {
     if (videoEl.dataset.objectUrl) {
       URL.revokeObjectURL(videoEl.dataset.objectUrl);
       delete videoEl.dataset.objectUrl;
     }
     videoEl.removeAttribute("src");
     videoEl.style.display = "none";
-    ytFrame.style.display = "block";
-    ytFrame.src = url;
+    ytWrap.style.display = "none";
+    if (ytPlayer && ytPlayer.destroy) {
+      try { ytPlayer.destroy(); } catch (_) {}
+      ytPlayer = null;
+    }
   }
+
+  function showLocal() {
+    hidePlayers();
+    videoEl.style.display = "block";
+    watchReported = false;
+    videoEl.onended = () => reportWatched();
+  }
+
+  function extractYtId(embedUrl) {
+    const m = (embedUrl || "").match(/embed\/([A-Za-z0-9_-]{11})/);
+    return m ? m[1] : null;
+  }
+
+  function mountYt(videoId) {
+    ytWrap.style.display = "block";
+    ytWrap.innerHTML = '<div id="ytPlayer"></div>';
+    watchReported = false;
+    ytPlayer = new YT.Player("ytPlayer", {
+      height: "100%",
+      width: "100%",
+      videoId,
+      playerVars: { rel: 0, modestbranding: 1, origin: location.origin },
+      events: {
+        onStateChange: (e) => {
+          if (e.data === YT.PlayerState.ENDED) reportWatched();
+        },
+      },
+    });
+  }
+
+  function showYoutube(embedUrl) {
+    hidePlayers();
+    const id = extractYtId(embedUrl);
+    if (!id) {
+      setMsg("No se pudo cargar el video de YouTube.");
+      return;
+    }
+    if (!ytReady || typeof YT === "undefined" || !YT.Player) {
+      pendingYtId = id;
+      ytWrap.style.display = "block";
+      return;
+    }
+    mountYt(id);
+  }
+
+  async function reportWatched() {
+    if (!currentLesson || watchReported) return;
+    watchReported = true;
+    try {
+      const data = await api("/api/progress/watched", {
+        method: "POST",
+        body: JSON.stringify({ slug, lessonId: currentLesson }),
+      });
+      watchedMap = data.enrollment.videoWatched || watchedMap;
+      progress = data.enrollment.progress || progress;
+      quizPassedMap = data.enrollment.quizPassed || quizPassedMap;
+      refreshLessonButtons();
+      if (data.enrollment.certificateCode) {
+        document.getElementById("certLink").style.display = "inline-flex";
+      }
+      if (data.hasQuiz) {
+        setMsg("Video completo. Ahora respondé el cuestionario.", true);
+        await loadQuiz(currentLesson);
+      } else {
+        setMsg("Video completo. Lección marcada.", true);
+        quizBox.style.display = "none";
+      }
+    } catch (e) {
+      watchReported = false;
+      setMsg(e.message);
+    }
+  }
+
+  function refreshLessonButtons() {
+    document.querySelectorAll(".lesson-btn").forEach((b) => {
+      b.classList.toggle("done", Boolean(progress[b.dataset.id]));
+    });
+  }
+
+  async function loadQuiz(lessonId) {
+    quizForm.innerHTML = "";
+    quizBox.style.display = "none";
+    try {
+      const data = await api("/api/lessons/" + encodeURIComponent(lessonId) + "/quiz?slug=" + encodeURIComponent(slug));
+      if (!data.questions || !data.questions.length) {
+        quizBox.style.display = "none";
+        return;
+      }
+      data.questions.forEach((q, idx) => {
+        const fieldset = document.createElement("fieldset");
+        fieldset.style.border = "0";
+        fieldset.style.margin = "0 0 1rem";
+        fieldset.style.padding = "0";
+        const legend = document.createElement("legend");
+        legend.innerHTML = "<strong>" + (idx + 1) + ". " + q.prompt + "</strong>";
+        fieldset.appendChild(legend);
+        (q.answers || []).forEach((a) => {
+          const label = document.createElement("label");
+          label.style.display = "block";
+          label.style.margin = "0.35rem 0";
+          label.innerHTML = '<input type="radio" name="q_' + q.id + '" value="' + a.id + '" required /> ' + a.text;
+          fieldset.appendChild(label);
+        });
+        quizForm.appendChild(fieldset);
+      });
+      quizBox.style.display = "block";
+    } catch (e) {
+      if (e.data && e.data.videoRequired) {
+        quizBox.style.display = "none";
+        setMsg("Tenés que ver el video completo antes de responder.");
+      } else {
+        setMsg(e.message);
+      }
+    }
+  }
+
+  document.getElementById("submitQuizBtn").onclick = async () => {
+    if (!currentLesson) return;
+    const answers = {};
+    const radios = quizForm.querySelectorAll("input[type=radio]:checked");
+    radios.forEach((r) => {
+      answers[r.name.replace(/^q_/, "")] = r.value;
+    });
+    const needed = quizForm.querySelectorAll("fieldset").length;
+    if (Object.keys(answers).length < needed) {
+      setMsg("Respondé todas las preguntas.");
+      return;
+    }
+    try {
+      const result = await api("/api/lessons/quiz", {
+        method: "POST",
+        body: JSON.stringify({ slug, lessonId: currentLesson, answers }),
+      });
+      progress = result.enrollment.progress || progress;
+      watchedMap = result.enrollment.videoWatched || watchedMap;
+      quizPassedMap = result.enrollment.quizPassed || quizPassedMap;
+      refreshLessonButtons();
+      setMsg(result.message, result.lessonPassed || result.courseApproved);
+
+      if (result.mustRestart) {
+        quizBox.style.display = "none";
+        hidePlayers();
+        alert(result.message);
+        location.reload();
+        return;
+      }
+      if (result.enrollment.certificateCode) {
+        document.getElementById("certLink").style.display = "inline-flex";
+      }
+      if (!result.lessonPassed) {
+        quizBox.style.display = "none";
+        watchReported = false;
+      } else {
+        quizBox.style.display = "none";
+      }
+    } catch (e) {
+      setMsg(e.message);
+    }
+  };
 
   document.querySelectorAll(".lesson-btn").forEach((btn) => {
     btn.onclick = () => playLesson(btn.dataset.id, btn);
   });
 
-  document.getElementById("completeBtn").onclick = async () => {
-    if (!currentLesson) return;
-    const result = await api("/api/progress", {
-      method: "POST",
-      body: JSON.stringify({ slug, lessonId: currentLesson }),
-    });
-    progress = result.enrollment.progress || {};
-    document.querySelectorAll(".lesson-btn").forEach((b) => {
-      b.classList.toggle("done", Boolean(progress[b.dataset.id]));
-    });
-    document.getElementById("msg").textContent = "Lección marcada.";
-    if (result.enrollment.certificateCode) {
-      document.getElementById("certLink").style.display = "inline-flex";
-      document.getElementById("msg").textContent = "¡Certificado listo!";
-    }
-  };
-
   async function playLesson(lessonId, btn) {
     currentLesson = lessonId;
     document.querySelectorAll(".lesson-btn").forEach((b) => b.classList.remove("active"));
     if (btn) btn.classList.add("active");
-    document.getElementById("completeBtn").disabled = true;
-    document.getElementById("msg").textContent = "Cargando contenido…";
+    quizBox.style.display = "none";
+    setMsg("Cargando contenido…");
     try {
       const session = await api("/api/stream/session", {
         method: "POST",
@@ -113,10 +284,17 @@
         showLocal();
         await loadEncryptedVideo(videoEl, session);
       }
-      document.getElementById("completeBtn").disabled = false;
-      document.getElementById("msg").textContent = "";
+
+      if (watchedMap[lessonId] && !progress[lessonId]) {
+        setMsg("Ya viste el video. Completá el cuestionario.", true);
+        await loadQuiz(lessonId);
+      } else if (progress[lessonId]) {
+        setMsg("Lección ya aprobada.", true);
+      } else {
+        setMsg("Mirá el video completo para desbloquear las preguntas.");
+      }
     } catch (e) {
-      document.getElementById("msg").textContent = e.message;
+      setMsg(e.message);
     }
   }
 

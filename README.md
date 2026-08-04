@@ -56,10 +56,12 @@ El aula/video **solo se habilita con pago acreditado** (`approved`).
 | Alumno | `demo@santicaza.com` | `demo1234` |
 | Admin | `admin@santicaza.com` | `admin1234` |
 
-## Admin: cargar videos / YouTube
+## Admin: videos, YouTube y preguntas
 
 1. Entrar como admin → **Admin** → **Contenido / videos** en el curso.
-2. Crear un **módulo**, luego una **lección** con:
-   - link de **YouTube** (watch / youtu.be; no listado o privado según el video), o
-   - **subir MP4** (queda en `content/videos/`).
-3. El alumno ve el contenido en **Aula** solo después del pago acreditado (la URL no se publica en el catálogo).
+2. Crear un **módulo**, luego una **lección** con YouTube o MP4.
+3. En cada lección, agregar **preguntas** (opciones A–D, una correcta).
+4. El alumno, tras pagar:
+   - debe **ver el video completo** para desbloquear el cuestionario;
+   - aprueba el curso con **≥ 60%** de respuestas correctas;
+   - si el promedio final es menor, **reinicia todo** (videos + preguntas).

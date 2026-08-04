@@ -88,6 +88,7 @@ public class AdminDashboardViewModel
 public class AdminCourseEditViewModel
 {
     public Course Course { get; set; } = new();
+    public Dictionary<string, List<LessonQuestion>> QuestionsByLesson { get; set; } = new();
     public string? Error { get; set; }
     public string? Message { get; set; }
 }
@@ -107,4 +108,17 @@ public class AdminLessonForm
     /// <summary>youtube | upload</summary>
     [Required] public string SourceType { get; set; } = "youtube";
     public string? YoutubeUrl { get; set; }
+}
+
+public class AdminQuestionForm
+{
+    [Required] public string CourseId { get; set; } = "";
+    [Required] public string LessonId { get; set; } = "";
+    [Required] public string Prompt { get; set; } = "";
+    [Required] public string OptionA { get; set; } = "";
+    [Required] public string OptionB { get; set; } = "";
+    public string? OptionC { get; set; }
+    public string? OptionD { get; set; }
+    /// <summary>A, B, C o D</summary>
+    [Required] public string CorrectOption { get; set; } = "A";
 }

@@ -24,9 +24,15 @@ public class AdminController : Controller
     {
         var course = await _store.GetCourseByIdAsync(id);
         if (course == null) return NotFound();
+
+        var questionsByLesson = new Dictionary<string, List<LessonQuestion>>();
+        foreach (var les in course.Modules.SelectMany(m => m.Lessons))
+            questionsByLesson[les.Id] = await _store.ListQuestionsForLessonAsync(les.Id, includeCorrect: true);
+
         return View(new AdminCourseEditViewModel
         {
             Course = course,
+            QuestionsByLesson = questionsByLesson,
             Message = message,
             Error = error,
         });
@@ -179,6 +185,44 @@ public class AdminController : Controller
             return RedirectToAction(nameof(Course), new { id = courseId, error = ex.Message });
         }
         return RedirectToAction(nameof(Course), new { id = courseId, message = "Lección eliminada." });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> AddQuestion(AdminQuestionForm form)
+    {
+        try
+        {
+            var options = new List<(string Text, bool IsCorrect)>();
+            void Add(string? text, string key)
+            {
+                if (string.IsNullOrWhiteSpace(text)) return;
+                options.Add((text.Trim(), string.Equals(form.CorrectOption, key, StringComparison.OrdinalIgnoreCase)));
+            }
+            Add(form.OptionA, "A");
+            Add(form.OptionB, "B");
+            Add(form.OptionC, "C");
+            Add(form.OptionD, "D");
+
+            await _store.AddQuestionAsync(form.LessonId, form.Prompt, options);
+            return RedirectToAction(nameof(Course), new { id = form.CourseId, message = "Pregunta agregada." });
+        }
+        catch (Exception ex)
+        {
+            return RedirectToAction(nameof(Course), new { id = form.CourseId, error = ex.Message });
+        }
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> DeleteQuestion(string courseId, string questionId)
+    {
+        try { await _store.DeleteQuestionAsync(questionId); }
+        catch (Exception ex)
+        {
+            return RedirectToAction(nameof(Course), new { id = courseId, error = ex.Message });
+        }
+        return RedirectToAction(nameof(Course), new { id = courseId, message = "Pregunta eliminada." });
     }
 
     private async Task<AdminDashboardViewModel> BuildDashboardAsync()

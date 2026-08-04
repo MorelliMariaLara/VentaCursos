@@ -10,8 +10,12 @@ public class StoreService
 
     public StoreService(AppDbContext db) => _db = db;
 
+    public const decimal PassPercent = 60m;
+
     public async Task EnsureSeedAsync()
     {
+        await EnsureQuizSchemaAsync();
+
         if (!await _db.Courses.AnyAsync())
         {
             foreach (var course in CourseCatalog.SeedCourses())
@@ -20,6 +24,72 @@ public class StoreService
         }
 
         await EnsureDemoUsersAsync();
+    }
+
+    /// <summary>Crea tablas/columnas de quiz si faltan (SSMS también tiene database/04_QuizTables.sql).</summary>
+    public async Task EnsureQuizSchemaAsync()
+    {
+        var sql = """
+            IF COL_LENGTH(N'dbo.EnrollmentProgress', N'VideoWatched') IS NULL
+                ALTER TABLE dbo.EnrollmentProgress ADD VideoWatched BIT NOT NULL CONSTRAINT DF_EP_VideoWatched DEFAULT (0);
+            IF COL_LENGTH(N'dbo.EnrollmentProgress', N'QuizPassed') IS NULL
+                ALTER TABLE dbo.EnrollmentProgress ADD QuizPassed BIT NOT NULL CONSTRAINT DF_EP_QuizPassed DEFAULT (0);
+
+            IF OBJECT_ID(N'dbo.LessonQuestions', N'U') IS NULL
+            BEGIN
+                CREATE TABLE dbo.LessonQuestions (
+                    Id NVARCHAR(64) NOT NULL CONSTRAINT PK_LessonQuestions PRIMARY KEY,
+                    LessonId NVARCHAR(64) NOT NULL,
+                    Prompt NVARCHAR(1000) NOT NULL,
+                    SortOrder INT NOT NULL CONSTRAINT DF_LQ_Sort DEFAULT (0),
+                    CONSTRAINT FK_LQ_Lessons FOREIGN KEY (LessonId) REFERENCES dbo.Lessons (Id) ON DELETE CASCADE
+                );
+                CREATE INDEX IX_LessonQuestions_LessonId ON dbo.LessonQuestions (LessonId);
+            END
+
+            IF OBJECT_ID(N'dbo.LessonAnswers', N'U') IS NULL
+            BEGIN
+                CREATE TABLE dbo.LessonAnswers (
+                    Id NVARCHAR(64) NOT NULL CONSTRAINT PK_LessonAnswers PRIMARY KEY,
+                    QuestionId NVARCHAR(64) NOT NULL,
+                    Text NVARCHAR(500) NOT NULL,
+                    IsCorrect BIT NOT NULL CONSTRAINT DF_LA_Correct DEFAULT (0),
+                    SortOrder INT NOT NULL CONSTRAINT DF_LA_Sort DEFAULT (0),
+                    CONSTRAINT FK_LA_Questions FOREIGN KEY (QuestionId) REFERENCES dbo.LessonQuestions (Id) ON DELETE CASCADE
+                );
+                CREATE INDEX IX_LessonAnswers_QuestionId ON dbo.LessonAnswers (QuestionId);
+            END
+
+            IF OBJECT_ID(N'dbo.QuizAttempts', N'U') IS NULL
+            BEGIN
+                CREATE TABLE dbo.QuizAttempts (
+                    Id NVARCHAR(64) NOT NULL CONSTRAINT PK_QuizAttempts PRIMARY KEY,
+                    EnrollmentId NVARCHAR(64) NOT NULL,
+                    LessonId NVARCHAR(64) NOT NULL,
+                    Score INT NOT NULL,
+                    Total INT NOT NULL,
+                    PercentScore DECIMAL(5,2) NOT NULL CONSTRAINT DF_QA_Percent DEFAULT (0),
+                    Passed BIT NOT NULL CONSTRAINT DF_QA_Passed DEFAULT (0),
+                    AttemptedAt DATETIME2(3) NOT NULL CONSTRAINT DF_QA_At DEFAULT (SYSUTCDATETIME()),
+                    CONSTRAINT FK_QA_Enrollments FOREIGN KEY (EnrollmentId) REFERENCES dbo.Enrollments (Id) ON DELETE CASCADE
+                );
+                CREATE INDEX IX_QuizAttempts_Enrollment_Lesson ON dbo.QuizAttempts (EnrollmentId, LessonId);
+            END
+
+            IF OBJECT_ID(N'dbo.QuizAttemptAnswers', N'U') IS NULL
+            BEGIN
+                CREATE TABLE dbo.QuizAttemptAnswers (
+                    AttemptId NVARCHAR(64) NOT NULL,
+                    QuestionId NVARCHAR(64) NOT NULL,
+                    AnswerId NVARCHAR(64) NOT NULL,
+                    IsCorrect BIT NOT NULL,
+                    CONSTRAINT PK_QuizAttemptAnswers PRIMARY KEY (AttemptId, QuestionId),
+                    CONSTRAINT FK_QAA_Attempts FOREIGN KEY (AttemptId) REFERENCES dbo.QuizAttempts (Id) ON DELETE CASCADE
+                );
+            END
+            """;
+        try { await _db.Database.ExecuteSqlRawAsync(sql); }
+        catch (Exception ex) { Console.WriteLine("  AVISO quiz schema: " + ex.Message); }
     }
 
     private async Task EnsureDemoUsersAsync()
@@ -202,6 +272,8 @@ public class StoreService
         CertificateCode = e.CertificateCode,
         CertificateIssuedAt = e.CertificateIssuedAt?.ToString("o"),
         Progress = e.Progress.ToDictionary(p => p.LessonId, p => p.Completed),
+        VideoWatched = e.Progress.ToDictionary(p => p.LessonId, p => p.VideoWatched),
+        QuizPassed = e.Progress.ToDictionary(p => p.LessonId, p => p.QuizPassed),
     };
 
     private IQueryable<CourseEntity> CoursesQuery() =>
@@ -402,49 +474,313 @@ public class StoreService
             .FirstOrDefaultAsync(e => e.UserId == userId && e.CourseId == courseId)
             ?? throw new InvalidOperationException("NOT_ENROLLED");
 
+        var questionCount = await _db.LessonQuestions.CountAsync(q => q.LessonId == lessonId);
+        var progress = await GetOrCreateProgressAsync(enrollment, lessonId);
+
+        if (questionCount > 0 && !progress.QuizPassed)
+            throw new InvalidOperationException("QUIZ_REQUIRED");
+
+        if (questionCount == 0 && !progress.VideoWatched)
+            throw new InvalidOperationException("VIDEO_REQUIRED");
+
+        progress.Completed = true;
+        progress.CompletedAt = DateTime.UtcNow;
+        await TryIssueCertificateAsync(enrollment, courseId);
+        await _db.SaveChangesAsync();
+        return MapEnrollment(enrollment);
+    }
+
+    private async Task<EnrollmentProgressEntity> GetOrCreateProgressAsync(EnrollmentEntity enrollment, string lessonId)
+    {
         var progress = enrollment.Progress.FirstOrDefault(p => p.LessonId == lessonId);
-        if (progress == null)
+        if (progress != null) return progress;
+        progress = new EnrollmentProgressEntity
         {
-            enrollment.Progress.Add(new EnrollmentProgressEntity
-            {
-                EnrollmentId = enrollment.Id,
-                LessonId = lessonId,
-                Completed = true,
-                CompletedAt = DateTime.UtcNow,
-            });
-        }
-        else
+            EnrollmentId = enrollment.Id,
+            LessonId = lessonId,
+            Completed = false,
+            VideoWatched = false,
+            QuizPassed = false,
+            CompletedAt = DateTime.UtcNow,
+        };
+        enrollment.Progress.Add(progress);
+        await _db.SaveChangesAsync();
+        return progress;
+    }
+
+    public async Task<Enrollment> MarkVideoWatchedAsync(string userId, string courseId, string lessonId)
+    {
+        var enrollment = await _db.Enrollments
+            .Include(e => e.Progress)
+            .FirstOrDefaultAsync(e => e.UserId == userId && e.CourseId == courseId)
+            ?? throw new InvalidOperationException("NOT_ENROLLED");
+
+        var found = CourseMapper.FindLesson(
+            (await GetCourseByIdAsync(courseId)) ?? throw new InvalidOperationException("COURSE_NOT_FOUND"),
+            lessonId);
+        if (found == null) throw new InvalidOperationException("LESSON_NOT_FOUND");
+
+        var progress = await GetOrCreateProgressAsync(enrollment, lessonId);
+        progress.VideoWatched = true;
+
+        // Sin preguntas: al terminar el video se completa la lección
+        var qCount = await _db.LessonQuestions.CountAsync(q => q.LessonId == lessonId);
+        if (qCount == 0)
         {
             progress.Completed = true;
+            progress.QuizPassed = true;
             progress.CompletedAt = DateTime.UtcNow;
-        }
-
-        if (enrollment.CertificateIssuedAt == null)
-        {
-            var course = await CoursesQuery().AsNoTracking().FirstOrDefaultAsync(c => c.Id == courseId);
-            if (course?.IncludesCertificate == true)
-            {
-                var allLessonIds = course.Modules.SelectMany(m => m.Lessons).Select(l => l.Id).ToList();
-                var done = enrollment.Progress
-                    .Where(p => p.Completed)
-                    .Select(p => p.LessonId)
-                    .Append(lessonId)
-                    .Distinct()
-                    .ToHashSet();
-                if (allLessonIds.Count > 0 && allLessonIds.All(done.Contains))
-                {
-                    enrollment.CertificateIssuedAt = DateTime.UtcNow;
-                    var prefix = course.Slug.Length >= 4
-                        ? course.Slug[..4].ToUpperInvariant()
-                        : course.Slug.ToUpperInvariant();
-                    enrollment.CertificateCode =
-                        $"SCZ-{prefix}-{Guid.NewGuid().ToString("N")[..8].ToUpperInvariant()}";
-                }
-            }
+            await TryIssueCertificateAsync(enrollment, courseId);
         }
 
         await _db.SaveChangesAsync();
         return MapEnrollment(enrollment);
+    }
+
+    public async Task<List<LessonQuestion>> ListQuestionsForLessonAsync(string lessonId, bool includeCorrect)
+    {
+        var questions = await _db.LessonQuestions.AsNoTracking()
+            .Include(q => q.Answers)
+            .Where(q => q.LessonId == lessonId)
+            .OrderBy(q => q.SortOrder)
+            .ToListAsync();
+
+        return questions.Select(q => new LessonQuestion
+        {
+            Id = q.Id,
+            LessonId = q.LessonId,
+            Prompt = q.Prompt,
+            SortOrder = q.SortOrder,
+            Answers = q.Answers.OrderBy(a => a.SortOrder).Select(a => new LessonAnswerOption
+            {
+                Id = a.Id,
+                Text = a.Text,
+                SortOrder = a.SortOrder,
+                IsCorrect = includeCorrect && a.IsCorrect,
+            }).ToList(),
+        }).ToList();
+    }
+
+    public async Task<LessonQuestion> AddQuestionAsync(
+        string lessonId, string prompt, IReadOnlyList<(string Text, bool IsCorrect)> options)
+    {
+        if (string.IsNullOrWhiteSpace(prompt))
+            throw new InvalidOperationException("La pregunta no puede estar vacía.");
+        if (options.Count < 2)
+            throw new InvalidOperationException("Cada pregunta necesita al menos 2 opciones.");
+        if (options.Count(o => o.IsCorrect) != 1)
+            throw new InvalidOperationException("Marcá exactamente una opción correcta.");
+
+        var exists = await _db.Lessons.AnyAsync(l => l.Id == lessonId);
+        if (!exists) throw new InvalidOperationException("LESSON_NOT_FOUND");
+
+        var sort = await _db.LessonQuestions.CountAsync(q => q.LessonId == lessonId) + 1;
+        var q = new LessonQuestionEntity
+        {
+            Id = Guid.NewGuid().ToString(),
+            LessonId = lessonId,
+            Prompt = prompt.Trim(),
+            SortOrder = sort,
+        };
+        _db.LessonQuestions.Add(q);
+        var i = 0;
+        foreach (var opt in options)
+        {
+            _db.LessonAnswers.Add(new LessonAnswerEntity
+            {
+                Id = Guid.NewGuid().ToString(),
+                QuestionId = q.Id,
+                Text = opt.Text.Trim(),
+                IsCorrect = opt.IsCorrect,
+                SortOrder = ++i,
+            });
+        }
+        await _db.SaveChangesAsync();
+        return (await ListQuestionsForLessonAsync(lessonId, true)).First(x => x.Id == q.Id);
+    }
+
+    public async Task DeleteQuestionAsync(string questionId)
+    {
+        var q = await _db.LessonQuestions.Include(x => x.Answers)
+            .FirstOrDefaultAsync(x => x.Id == questionId)
+            ?? throw new InvalidOperationException("QUESTION_NOT_FOUND");
+        _db.LessonAnswers.RemoveRange(q.Answers);
+        _db.LessonQuestions.Remove(q);
+        await _db.SaveChangesAsync();
+    }
+
+    public async Task<QuizSubmitResult> SubmitLessonQuizAsync(
+        string userId, string courseId, string lessonId, Dictionary<string, string> answersByQuestionId)
+    {
+        var enrollment = await _db.Enrollments
+            .Include(e => e.Progress)
+            .FirstOrDefaultAsync(e => e.UserId == userId && e.CourseId == courseId)
+            ?? throw new InvalidOperationException("NOT_ENROLLED");
+
+        var progress = await GetOrCreateProgressAsync(enrollment, lessonId);
+        if (!progress.VideoWatched)
+            throw new InvalidOperationException("VIDEO_REQUIRED");
+
+        var questions = await _db.LessonQuestions
+            .Include(q => q.Answers)
+            .Where(q => q.LessonId == lessonId)
+            .OrderBy(q => q.SortOrder)
+            .ToListAsync();
+
+        if (questions.Count == 0)
+            throw new InvalidOperationException("NO_QUESTIONS");
+
+        var score = 0;
+        var attempt = new QuizAttemptEntity
+        {
+            Id = Guid.NewGuid().ToString(),
+            EnrollmentId = enrollment.Id,
+            LessonId = lessonId,
+            Total = questions.Count,
+            AttemptedAt = DateTime.UtcNow,
+        };
+
+        foreach (var q in questions)
+        {
+            answersByQuestionId.TryGetValue(q.Id, out var chosenId);
+            var chosen = q.Answers.FirstOrDefault(a => a.Id == chosenId);
+            var correct = chosen != null && chosen.IsCorrect;
+            if (correct) score++;
+            attempt.Answers.Add(new QuizAttemptAnswerEntity
+            {
+                AttemptId = attempt.Id,
+                QuestionId = q.Id,
+                AnswerId = chosen?.Id ?? "",
+                IsCorrect = correct,
+            });
+        }
+
+        attempt.Score = score;
+        attempt.PercentScore = Math.Round(100m * score / questions.Count, 2);
+        attempt.Passed = attempt.PercentScore >= PassPercent; // info por lección
+        _db.QuizAttempts.Add(attempt);
+
+        // La lección queda respondida; la aprobación del curso es por promedio global ≥ 60%
+        progress.QuizPassed = true;
+        progress.Completed = true;
+        progress.CompletedAt = DateTime.UtcNow;
+
+        await _db.SaveChangesAsync();
+
+        var course = await GetCourseByIdAsync(courseId)
+            ?? throw new InvalidOperationException("COURSE_NOT_FOUND");
+        var courseStats = await ComputeCourseQuizStatsAsync(enrollment.Id, course);
+        var mustRestart = false;
+        var courseApproved = false;
+        var message =
+            $"Respuestas de esta lección: {score}/{questions.Count} ({attempt.PercentScore:0.#}%). " +
+            $"Promedio del curso hasta ahora: {courseStats.CoursePercent:0.#}%.";
+
+        // Cuando contestó todas las lecciones con preguntas → aprobar o reiniciar todo
+        if (courseStats.AllQuizzesDone)
+        {
+            if (courseStats.CoursePercent >= PassPercent)
+            {
+                courseApproved = true;
+                await TryIssueCertificateAsync(enrollment, courseId);
+                await _db.SaveChangesAsync();
+                message = $"Curso aprobado con {courseStats.CoursePercent:0.#}% de respuestas correctas.";
+            }
+            else
+            {
+                mustRestart = true;
+                await ResetEnrollmentLearningAsync(enrollment);
+                message =
+                    $"Promedio del curso: {courseStats.CoursePercent:0.#}% (mínimo {PassPercent:0}%). " +
+                    "Debés hacer todo de nuevo: ver cada video completo y responder las preguntas.";
+            }
+        }
+
+        enrollment = (await _db.Enrollments.Include(e => e.Progress)
+            .FirstAsync(e => e.Id == enrollment.Id));
+
+        return new QuizSubmitResult
+        {
+            Score = score,
+            Total = questions.Count,
+            LessonPercent = attempt.PercentScore,
+            LessonPassed = attempt.Passed,
+            CoursePercent = courseStats.CoursePercent,
+            CourseApproved = courseApproved,
+            MustRestart = mustRestart,
+            Enrollment = MapEnrollment(enrollment),
+            Message = message,
+        };
+    }
+
+    private async Task<(decimal CoursePercent, bool AllQuizzesDone)> ComputeCourseQuizStatsAsync(
+        string enrollmentId, Course course)
+    {
+        var lessonIds = course.Modules.SelectMany(m => m.Lessons).Select(l => l.Id).ToList();
+        var lessonsWithQuestions = await _db.LessonQuestions.AsNoTracking()
+            .Where(q => lessonIds.Contains(q.LessonId))
+            .GroupBy(q => q.LessonId)
+            .Select(g => g.Key)
+            .ToListAsync();
+
+        if (lessonsWithQuestions.Count == 0)
+            return (100m, true);
+
+        // Último intento por lección
+        var attempts = await _db.QuizAttempts.AsNoTracking()
+            .Where(a => a.EnrollmentId == enrollmentId && lessonsWithQuestions.Contains(a.LessonId))
+            .OrderByDescending(a => a.AttemptedAt)
+            .ToListAsync();
+
+        var latest = attempts
+            .GroupBy(a => a.LessonId)
+            .ToDictionary(g => g.Key, g => g.First());
+
+        var allDone = lessonsWithQuestions.All(latest.ContainsKey);
+        var totalScore = latest.Values.Sum(a => a.Score);
+        var totalQ = latest.Values.Sum(a => a.Total);
+        var pct = totalQ == 0 ? 0m : Math.Round(100m * totalScore / totalQ, 2);
+        return (pct, allDone);
+    }
+
+    private async Task ResetEnrollmentLearningAsync(EnrollmentEntity enrollment)
+    {
+        var attempts = await _db.QuizAttempts
+            .Include(a => a.Answers)
+            .Where(a => a.EnrollmentId == enrollment.Id)
+            .ToListAsync();
+        _db.QuizAttemptAnswers.RemoveRange(attempts.SelectMany(a => a.Answers));
+        _db.QuizAttempts.RemoveRange(attempts);
+        _db.EnrollmentProgress.RemoveRange(enrollment.Progress);
+        enrollment.Progress.Clear();
+        enrollment.CertificateCode = null;
+        enrollment.CertificateIssuedAt = null;
+        await _db.SaveChangesAsync();
+    }
+
+    private async Task TryIssueCertificateAsync(EnrollmentEntity enrollment, string courseId)
+    {
+        if (enrollment.CertificateIssuedAt != null) return;
+        var course = await CoursesQuery().AsNoTracking().FirstOrDefaultAsync(c => c.Id == courseId);
+        if (course?.IncludesCertificate != true) return;
+
+        var allLessonIds = course.Modules.SelectMany(m => m.Lessons).Select(l => l.Id).ToList();
+        if (allLessonIds.Count == 0) return;
+
+        // Recargar progress
+        await _db.Entry(enrollment).Collection(e => e.Progress).LoadAsync();
+        var done = enrollment.Progress.Where(p => p.Completed).Select(p => p.LessonId).ToHashSet();
+        if (!allLessonIds.All(done.Contains)) return;
+
+        var stats = await ComputeCourseQuizStatsAsync(enrollment.Id, MapCourse(course));
+        if (!stats.AllQuizzesDone || stats.CoursePercent < PassPercent) return;
+
+        enrollment.CertificateIssuedAt = DateTime.UtcNow;
+        var prefix = course.Slug.Length >= 4
+            ? course.Slug[..4].ToUpperInvariant()
+            : course.Slug.ToUpperInvariant();
+        enrollment.CertificateCode =
+            $"SCZ-{prefix}-{Guid.NewGuid().ToString("N")[..8].ToUpperInvariant()}";
     }
 
     public async Task<Course> UpsertCourseAsync(Course input)

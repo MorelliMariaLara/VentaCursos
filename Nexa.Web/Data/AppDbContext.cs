@@ -14,6 +14,10 @@ public class AppDbContext : DbContext
     public DbSet<OrderEntity> Orders => Set<OrderEntity>();
     public DbSet<EnrollmentEntity> Enrollments => Set<EnrollmentEntity>();
     public DbSet<EnrollmentProgressEntity> EnrollmentProgress => Set<EnrollmentProgressEntity>();
+    public DbSet<LessonQuestionEntity> LessonQuestions => Set<LessonQuestionEntity>();
+    public DbSet<LessonAnswerEntity> LessonAnswers => Set<LessonAnswerEntity>();
+    public DbSet<QuizAttemptEntity> QuizAttempts => Set<QuizAttemptEntity>();
+    public DbSet<QuizAttemptAnswerEntity> QuizAttemptAnswers => Set<QuizAttemptAnswerEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -76,6 +80,7 @@ public class AppDbContext : DbContext
             e.Property(x => x.Title).HasMaxLength(300).IsRequired();
             e.Property(x => x.SourceUrl).HasMaxLength(500).IsRequired();
             e.Property(x => x.Order).HasColumnName("Order");
+            e.HasMany(x => x.Questions).WithOne(x => x.Lesson!).HasForeignKey(x => x.LessonId);
         });
 
         modelBuilder.Entity<OrderEntity>(e =>
@@ -114,6 +119,45 @@ public class AppDbContext : DbContext
             e.HasKey(x => new { x.EnrollmentId, x.LessonId });
             e.Property(x => x.EnrollmentId).HasMaxLength(64);
             e.Property(x => x.LessonId).HasMaxLength(64);
+        });
+
+        modelBuilder.Entity<LessonQuestionEntity>(e =>
+        {
+            e.ToTable("LessonQuestions");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasMaxLength(64);
+            e.Property(x => x.LessonId).HasMaxLength(64);
+            e.Property(x => x.Prompt).HasMaxLength(1000).IsRequired();
+            e.HasMany(x => x.Answers).WithOne(x => x.Question!).HasForeignKey(x => x.QuestionId);
+        });
+
+        modelBuilder.Entity<LessonAnswerEntity>(e =>
+        {
+            e.ToTable("LessonAnswers");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasMaxLength(64);
+            e.Property(x => x.QuestionId).HasMaxLength(64);
+            e.Property(x => x.Text).HasMaxLength(500).IsRequired();
+        });
+
+        modelBuilder.Entity<QuizAttemptEntity>(e =>
+        {
+            e.ToTable("QuizAttempts");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasMaxLength(64);
+            e.Property(x => x.EnrollmentId).HasMaxLength(64);
+            e.Property(x => x.LessonId).HasMaxLength(64);
+            e.Property(x => x.PercentScore).HasColumnType("decimal(5,2)");
+            e.HasMany(x => x.Answers).WithOne(x => x.Attempt!).HasForeignKey(x => x.AttemptId);
+        });
+
+        modelBuilder.Entity<QuizAttemptAnswerEntity>(e =>
+        {
+            e.ToTable("QuizAttemptAnswers");
+            e.HasKey(x => new { x.AttemptId, x.QuestionId });
+            e.Property(x => x.AttemptId).HasMaxLength(64);
+            e.Property(x => x.QuestionId).HasMaxLength(64);
+            e.Property(x => x.AnswerId).HasMaxLength(64);
         });
     }
 }

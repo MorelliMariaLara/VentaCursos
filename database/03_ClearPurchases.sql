@@ -22,6 +22,9 @@ BEGIN TRAN;
 DECLARE @Progress INT, @Enrollments INT, @Orders INT;
 
 /* ========== TODAS las compras (default) ========== */
+IF OBJECT_ID(N'dbo.QuizAttemptAnswers', N'U') IS NOT NULL DELETE FROM dbo.QuizAttemptAnswers;
+IF OBJECT_ID(N'dbo.QuizAttempts', N'U') IS NOT NULL DELETE FROM dbo.QuizAttempts;
+
 DELETE FROM dbo.EnrollmentProgress;
 SET @Progress = @@ROWCOUNT;
 

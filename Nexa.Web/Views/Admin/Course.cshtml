@@ -96,6 +96,52 @@
                             <input type="hidden" name="lessonId" value="@les.Id" />
                             <button class="btn btn-ghost" type="submit">Eliminar lección</button>
                         </form>
+
+                        @{
+                            var qs = Model.QuestionsByLesson.TryGetValue(les.Id, out var list) ? list : new List<LessonQuestion>();
+                        }
+                        <div style="margin-top:1rem;padding:0.8rem;background:rgba(42,58,34,0.08);border-radius:8px">
+                            <h4 style="margin:0 0 0.5rem">Preguntas post-video (@qs.Count) · aprueba con 60%</h4>
+                            @foreach (var q in qs)
+                            {
+                                <div style="margin-bottom:0.7rem;padding-bottom:0.7rem;border-bottom:1px solid var(--line)">
+                                    <strong>@q.Prompt</strong>
+                                    <ul class="hint" style="margin:0.3rem 0">
+                                        @foreach (var a in q.Answers)
+                                        {
+                                            <li>@(a.IsCorrect ? "✓ " : "")@a.Text</li>
+                                        }
+                                    </ul>
+                                    <form asp-action="DeleteQuestion" method="post" onsubmit="return confirm('¿Borrar pregunta?')">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="courseId" value="@c.Id" />
+                                        <input type="hidden" name="questionId" value="@q.Id" />
+                                        <button class="btn btn-ghost" type="submit">Borrar pregunta</button>
+                                    </form>
+                                </div>
+                            }
+                            <form class="form" asp-action="AddQuestion" method="post" style="max-width:none;margin-top:0.6rem">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="CourseId" value="@c.Id" />
+                                <input type="hidden" name="LessonId" value="@les.Id" />
+                                <label>Pregunta <input name="Prompt" required placeholder="¿Cuál es la medida de seguridad correcta?" /></label>
+                                <div class="grid-2">
+                                    <label>Opción A <input name="OptionA" required /></label>
+                                    <label>Opción B <input name="OptionB" required /></label>
+                                    <label>Opción C <input name="OptionC" placeholder="(opcional)" /></label>
+                                    <label>Opción D <input name="OptionD" placeholder="(opcional)" /></label>
+                                </div>
+                                <label>Respuesta correcta
+                                    <select name="CorrectOption">
+                                        <option value="A">A</option>
+                                        <option value="B">B</option>
+                                        <option value="C">C</option>
+                                        <option value="D">D</option>
+                                    </select>
+                                </label>
+                                <button class="btn btn-primary" type="submit">Agregar pregunta</button>
+                            </form>
+                        </div>
                     </div>
                 }
 
