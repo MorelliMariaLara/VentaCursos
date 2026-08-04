@@ -1,13 +1,24 @@
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.EntityFrameworkCore;
+using Nexa.Web.Data;
 using Nexa.Web.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
 LoadEnvFiles(builder);
 
+var connectionString =
+    builder.Configuration.GetConnectionString("CursoVentas")
+    ?? builder.Configuration["ConnectionStrings:CursoVentas"]
+    ?? Environment.GetEnvironmentVariable("CONNECTION_STRING")
+    ?? @"Server=LARA-NB\SQLEXPRESS02;Database=CursoVentas;Trusted_Connection=True;TrustServerCertificate=True;MultipleActiveResultSets=True";
+
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseSqlServer(connectionString));
+
 builder.Services.AddControllersWithViews();
 builder.Services.AddHttpClient();
-builder.Services.AddSingleton<StoreService>();
+builder.Services.AddScoped<StoreService>();
 builder.Services.AddSingleton<PaymentService>();
 builder.Services.AddSingleton<StreamService>();
 builder.Services.AddDataProtection();
@@ -26,6 +37,22 @@ builder.Services
 builder.Services.AddAuthorization();
 
 var app = builder.Build();
+
+using (var scope = app.Services.CreateScope())
+{
+    var store = scope.ServiceProvider.GetRequiredService<StoreService>();
+    try
+    {
+        await store.EnsureSeedAsync();
+        Console.WriteLine("  SQL Server: seed verificado (CursoVentas)");
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine("  AVISO: no se pudo conectar/sembrar SQL Server.");
+        Console.WriteLine("  " + ex.Message);
+        Console.WriteLine("  Ejecutá database/01_CreateTables.sql en LARA-NB\\SQLEXPRESS02 / CursoVentas");
+    }
+}
 
 if (!app.Environment.IsDevelopment())
 {
@@ -48,6 +75,7 @@ app.Urls.Add($"http://0.0.0.0:{port}");
 
 Console.WriteLine();
 Console.WriteLine($"  SANTICAZA Capacitaciones → http://localhost:{port}");
+Console.WriteLine(@"  SQL: LARA-NB\SQLEXPRESS02 · CursoVentas");
 Console.WriteLine("  Alumno: demo@santicaza.com / demo1234");
 Console.WriteLine("  Admin:  admin@santicaza.com / admin1234");
 Console.WriteLine();
@@ -80,14 +108,19 @@ static void LoadEnvFiles(WebApplicationBuilder builder)
         }
     }
 
-    // Prefer env vars already present
     foreach (var key in new[]
              {
                  "AUTH_SECRET", "STREAM_SECRET", "APP_URL", "PORT",
                  "MP_PUBLIC_KEY", "MP_ACCESS_TOKEN", "MP_ALLOW_SIMULATE", "MP_WEBHOOK_URL",
+                 "CONNECTION_STRING",
              })
     {
         var val = Environment.GetEnvironmentVariable(key);
-        if (!string.IsNullOrEmpty(val)) builder.Configuration[key] = val;
+        if (!string.IsNullOrEmpty(val))
+        {
+            builder.Configuration[key] = val;
+            if (key == "CONNECTION_STRING")
+                builder.Configuration["ConnectionStrings:CursoVentas"] = val;
+        }
     }
 }

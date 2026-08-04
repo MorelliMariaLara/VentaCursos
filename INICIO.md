@@ -1,6 +1,19 @@
 # Cómo iniciar SANTICAZA Capacitaciones
 
-Solución **ASP.NET Core MVC + APIs**. Necesitás [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0).
+Solución **ASP.NET Core MVC + APIs** + **SQL Server**.
+
+## Requisitos
+
+- [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
+- SQL Server: `LARA-NB\SQLEXPRESS02` · base `CursoVentas`
+
+## SQL (una vez)
+
+En SSMS, contra `LARA-NB\SQLEXPRESS02`:
+
+1. `CREATE DATABASE CursoVentas;` (si no existe)
+2. Ejecutar `database\01_CreateTables.sql`
+3. (Opcional) `database\02_SeedDemo.sql`
 
 ## PowerShell / CMD
 

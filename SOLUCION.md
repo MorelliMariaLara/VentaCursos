@@ -15,6 +15,7 @@ NEXA.sln
 ## Arranque
 
 ```bash
+# 1) Ejecutar database/01_CreateTables.sql en LARA-NB\SQLEXPRESS02 / CursoVentas
 dotnet run --project Nexa.Web
 # → http://localhost:5000
 ```
@@ -23,4 +24,4 @@ dotnet run --project Nexa.Web
 
 1. **MVC** renderiza catálogo, login, aula y admin.
 2. **APIs** atienden checkout (preferencia/pago), sesión de video y progreso.
-3. Los datos viven en `data/store.json` (sin SQL).
+3. Los datos viven en **SQL Server** `CursoVentas` (`LARA-NB\SQLEXPRESS02`).
