@@ -12,5 +12,8 @@ COPY --from=build /app/publish .
 COPY content/videos ./content/videos
 ENV PORT=5000
 ENV ASPNETCORE_URLS=http://0.0.0.0:5000
+ENV DataPath=/app/data/store.json
+ENV VideoPath=/app/content/videos
+ENV MP_ALLOW_SIMULATE=true
 EXPOSE 5000
 ENTRYPOINT ["dotnet", "Nexa.Web.dll"]
