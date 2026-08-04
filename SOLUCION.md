@@ -1,4 +1,4 @@
-# Solución NEXA (ASP.NET MVC + API)
+# Solución SANTICAZA Capacitaciones (ASP.NET MVC + API)
 
 Una sola solución Visual Studio con arquitectura MVC y APIs REST.
 

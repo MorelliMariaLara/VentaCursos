@@ -3,7 +3,7 @@ setlocal EnableExtensions
 cd /d "%~dp0"
 
 echo ================================
-echo  NEXA - ASP.NET MVC + API
+echo  SANTICAZA Capacitaciones
 echo ================================
 
 where dotnet >nul 2>nul

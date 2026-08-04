@@ -47,9 +47,9 @@ app.Urls.Clear();
 app.Urls.Add($"http://0.0.0.0:{port}");
 
 Console.WriteLine();
-Console.WriteLine($"  NEXA MVC listo → http://localhost:{port}");
-Console.WriteLine("  Alumno: demo@nexa.academy / demo1234");
-Console.WriteLine("  Admin:  admin@nexa.academy / admin1234");
+Console.WriteLine($"  SANTICAZA Capacitaciones → http://localhost:{port}");
+Console.WriteLine("  Alumno: demo@santicaza.com / demo1234");
+Console.WriteLine("  Admin:  admin@santicaza.com / admin1234");
 Console.WriteLine();
 
 app.Run();

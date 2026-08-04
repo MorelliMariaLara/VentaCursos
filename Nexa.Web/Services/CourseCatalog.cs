@@ -22,8 +22,8 @@ public static class CourseCatalog
             Level = "Intermedio",
             Price = 89000,
             DurationHours = 18,
-            CertificateName = "Certificación NEXA en Ciberseguridad Aplicada",
-            ThumbnailGradient = "linear-gradient(135deg, #0B3D4A 0%, #1A7A6D 55%, #C45C26 100%)",
+            CertificateName = "Certificación SANTICAZA en Ciberseguridad Aplicada",
+            ThumbnailGradient = "linear-gradient(135deg, #2A3A22 0%, #3D4F2F 45%, #5C4030 100%)",
             Instructor = "Ing. Laura Rivas",
             LearningOutcomes =
             [
@@ -66,8 +66,8 @@ public static class CourseCatalog
             Level = "Inicial",
             Price = 72000,
             DurationHours = 14,
-            CertificateName = "Certificación NEXA en Análisis de Datos",
-            ThumbnailGradient = "linear-gradient(145deg, #123048 0%, #2F6F8F 50%, #E8A15A 100%)",
+            CertificateName = "Certificación SANTICAZA en Análisis de Datos",
+            ThumbnailGradient = "linear-gradient(145deg, #3E2A1C 0%, #5A6B3A 50%, #8B5A2B 100%)",
             Instructor = "Lic. Martín Escobar",
             LearningOutcomes =
             [
@@ -110,8 +110,8 @@ public static class CourseCatalog
             Level = "Avanzado",
             Price = 98000,
             DurationHours = 12,
-            CertificateName = "Certificación NEXA en Liderazgo Digital",
-            ThumbnailGradient = "linear-gradient(160deg, #1C2B24 0%, #3E6B52 48%, #B86B3C 100%)",
+            CertificateName = "Certificación SANTICAZA en Liderazgo Digital",
+            ThumbnailGradient = "linear-gradient(160deg, #1C2618 0%, #4A3A28 48%, #6B5335 100%)",
             Instructor = "Mg. Sofía Herrera",
             LearningOutcomes =
             [

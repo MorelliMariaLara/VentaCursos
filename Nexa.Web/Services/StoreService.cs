@@ -52,20 +52,39 @@ public class StoreService
             db.Courses = CourseCatalog.SeedCourses();
             dirty = true;
         }
+        else if (db.Courses.Any(c =>
+                     (c.CertificateName?.Contains("NEXA", StringComparison.OrdinalIgnoreCase) ?? false) ||
+                     (c.Instructor?.Contains("NEXA", StringComparison.OrdinalIgnoreCase) ?? false)))
+        {
+            // Actualiza branding de cursos seed al renombrar a SANTICAZA
+            foreach (var seed in CourseCatalog.SeedCourses())
+            {
+                var existing = db.Courses.FirstOrDefault(c => c.Id == seed.Id || c.Slug == seed.Slug);
+                if (existing == null) continue;
+                existing.CertificateName = seed.CertificateName;
+                existing.ThumbnailGradient = seed.ThumbnailGradient;
+                existing.Instructor = seed.Instructor;
+            }
+            dirty = true;
+        }
 
         // Regeneramos demos si faltan o si el hash no verifica (migración desde Node scrypt)
-        var demo = db.Users.FirstOrDefault(u => u.Email == "demo@nexa.academy");
-        var admin = db.Users.FirstOrDefault(u => u.Email == "admin@nexa.academy");
+        var demo = db.Users.FirstOrDefault(u => u.Email is "demo@santicaza.com" or "demo@nexa.academy");
+        var admin = db.Users.FirstOrDefault(u => u.Email is "admin@santicaza.com" or "admin@nexa.academy");
         var needsReseed =
             demo == null ||
             admin == null ||
+            demo.Email != "demo@santicaza.com" ||
+            admin.Email != "admin@santicaza.com" ||
             !PasswordService.Verify("demo1234", demo.PasswordHash) ||
             !PasswordService.Verify("admin1234", admin.PasswordHash);
         if (needsReseed)
         {
             var demos = await DemoUsersAsync();
             db.Users = db.Users
-                .Where(u => u.Email is not ("demo@nexa.academy" or "admin@nexa.academy"))
+                .Where(u => u.Email is not (
+                    "demo@nexa.academy" or "admin@nexa.academy" or
+                    "demo@santicaza.com" or "admin@santicaza.com"))
                 .ToList();
             db.Users.AddRange(demos);
             dirty = true;
@@ -128,7 +147,7 @@ public class StoreService
             {
                 Id = "user-demo",
                 Name = "Estudiante Demo",
-                Email = "demo@nexa.academy",
+                Email = "demo@santicaza.com",
                 PasswordHash = PasswordService.Hash("demo1234"),
                 Role = "student",
                 CreatedAt = now,
@@ -136,8 +155,8 @@ public class StoreService
             new()
             {
                 Id = "user-admin",
-                Name = "Admin NEXA",
-                Email = "admin@nexa.academy",
+                Name = "Admin SANTICAZA",
+                Email = "admin@santicaza.com",
                 PasswordHash = PasswordService.Hash("admin1234"),
                 Role = "admin",
                 CreatedAt = now,
@@ -363,7 +382,7 @@ public class StoreService
                 {
                     enrollment.CertificateIssuedAt = DateTime.UtcNow.ToString("o");
                     var prefix = course.Slug.Length >= 4 ? course.Slug[..4].ToUpperInvariant() : course.Slug.ToUpperInvariant();
-                    enrollment.CertificateCode = $"NEXA-{prefix}-{Guid.NewGuid().ToString("N")[..8].ToUpperInvariant()}";
+                    enrollment.CertificateCode = $"SCZ-{prefix}-{Guid.NewGuid().ToString("N")[..8].ToUpperInvariant()}";
                 }
             }
 
@@ -393,7 +412,7 @@ public class StoreService
             input.Id = Guid.NewGuid().ToString();
             input.UpdatedAt = now;
             if (string.IsNullOrEmpty(input.CertificateName))
-                input.CertificateName = $"Certificación NEXA en {input.Title}";
+                input.CertificateName = $"Certificación SANTICAZA en {input.Title}";
             db.Courses.Add(input);
             return input;
         });

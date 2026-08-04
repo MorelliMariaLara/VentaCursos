@@ -1,4 +1,4 @@
-# Cómo iniciar NEXA
+# Cómo iniciar SANTICAZA Capacitaciones
 
 Solución **ASP.NET Core MVC + APIs**. Necesitás [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0).
 
@@ -24,5 +24,5 @@ O doble clic en **`iniciar.bat`**.
 
 | Rol | Email | Contraseña |
 | --- | --- | --- |
-| Alumno | `demo@nexa.academy` | `demo1234` |
-| Admin | `admin@nexa.academy` | `admin1234` |
+| Alumno | `demo@santicaza.com` | `demo1234` |
+| Admin | `admin@santicaza.com` | `admin1234` |

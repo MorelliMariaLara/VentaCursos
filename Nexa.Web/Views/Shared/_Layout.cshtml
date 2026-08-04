@@ -7,13 +7,16 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>@(ViewData["Title"] ?? "NEXA") · NEXA</title>
+    <title>@(ViewData["Title"] ?? "Inicio") · SANTICAZA Capacitaciones</title>
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
 </head>
 <body>
     <header class="site-header">
         <div class="wrap">
-            <a class="brand" asp-controller="Home" asp-action="Index">NEXA</a>
+            <a class="brand" asp-controller="Home" asp-action="Index">
+                SANTICAZA
+                <small>Capacitaciones</small>
+            </a>
             <nav class="nav">
                 <a asp-controller="Courses" asp-action="Index">Cursos</a>
                 @if (userName != null)
@@ -44,7 +47,7 @@
         @RenderBody()
     </main>
     <footer class="site-footer">
-        <div class="wrap">NEXA · solución ASP.NET MVC + API · demo@nexa.academy / demo1234</div>
+        <div class="wrap">SANTICAZA Capacitaciones · entrenamiento y formación · demo@santicaza.com / demo1234</div>
     </footer>
     <script src="~/js/site.js" asp-append-version="true"></script>
     @await RenderSectionAsync("Scripts", required: false)

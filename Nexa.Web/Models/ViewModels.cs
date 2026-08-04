@@ -5,7 +5,7 @@ namespace Nexa.Web.Models;
 public class LoginViewModel
 {
     [Required, EmailAddress]
-    public string Email { get; set; } = "demo@nexa.academy";
+    public string Email { get; set; } = "demo@santicaza.com";
 
     [Required, DataType(DataType.Password)]
     public string Password { get; set; } = "demo1234";

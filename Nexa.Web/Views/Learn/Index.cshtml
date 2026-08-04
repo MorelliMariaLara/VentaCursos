@@ -84,7 +84,7 @@
         body: JSON.stringify({ slug, lessonId }),
       });
       document.getElementById("lessonTitle").textContent = session.lesson.moduleTitle + " · " + session.lesson.title;
-      document.getElementById("wm").textContent = "NEXA · " + session.watermark;
+      document.getElementById("wm").textContent = "SANTICAZA · " + session.watermark;
       await loadEncryptedVideo(document.getElementById("video"), session);
       document.getElementById("completeBtn").disabled = false;
       document.getElementById("msg").textContent = "";

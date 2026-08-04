@@ -1,12 +1,13 @@
 @model List<PublicCourse>
 @{
-    ViewData["Title"] = "Cursos y certificaciones";
+    ViewData["Title"] = "Inicio";
 }
 <section class="hero">
     <div class="wrap hero-copy">
-        <p class="brand-mark">NEXA</p>
-        <h1>Cursos con video protegido y certificación.</h1>
-        <p>Comprá, aprendé en el aula cifrada y obtené tu certificado. Pagos con Mercado Pago o simulación en local.</p>
+        <p class="brand-mark">SANTICAZA</p>
+        <p class="brand-sub">Capacitaciones</p>
+        <h1>Formación táctica con video protegido y certificación.</h1>
+        <p>Comprá, entrená en el aula cifrada y obtené tu certificado. Pagos con Mercado Pago o simulación en local.</p>
         <div class="cta-row">
             <a class="btn btn-accent" asp-controller="Courses" asp-action="Index">Ver cursos</a>
             <a class="btn btn-ghost" asp-controller="Account" asp-action="Login">Ingresar</a>
@@ -16,7 +17,7 @@
 <section class="section">
     <div class="wrap">
         <h2>Catálogo</h2>
-        <p class="lead">Tres programas listos para demo. El video viaja cifrado al navegador.</p>
+        <p class="lead">Programas listos para operar. El video viaja cifrado al navegador.</p>
         <div class="course-list">
             @foreach (var c in Model)
             {

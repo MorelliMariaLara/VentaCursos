@@ -41,7 +41,7 @@ public class Course
     public bool IncludesCertificate { get; set; } = true;
     public string CertificateName { get; set; } = "";
     public string ThumbnailGradient { get; set; } = "linear-gradient(135deg, #0B3D4A 0%, #1A7A6D 55%, #C45C26 100%)";
-    public string Instructor { get; set; } = "Equipo NEXA";
+    public string Instructor { get; set; } = "Equipo SANTICAZA";
     public List<string> LearningOutcomes { get; set; } = new();
     public List<CourseModule> Modules { get; set; } = new();
     public bool Published { get; set; } = true;
