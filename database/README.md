@@ -26,6 +26,7 @@ IF DB_ID(N'CursoVentas') IS NULL
 2. Ejecutá **`01_CreateTables.sql`** (tablas + índices + FKs).
 3. (Opcional) Ejecutá **`02_SeedDemo.sql`** para cargar los 3 cursos demo.  
    Si no lo corrés, la app siembra cursos y usuarios al arrancar.
+4. (Opcional) **`03_ClearPurchases.sql`** — borra compras/inscripciones (Orders, Enrollments, progreso) para volver a probar el checkout. No borra usuarios ni cursos.
 
 ## Orden recomendado
 
