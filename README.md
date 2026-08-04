@@ -1,8 +1,18 @@
-# NEXA — Solución de venta de cursos y certificaciones
+# NEXA Web — Proyecto de inicio
 
-Solución web completa para **vender cursos en video**, cobrar con **Mercado Pago Checkout Bricks**, emitir **certificaciones** y proteger el contenido con **video cifrado**.
+Este repo **es el proyecto web** para vender cursos, cobrar con Mercado Pago, emitir certificaciones y proteger videos.
 
-Incluye tienda, aula del alumno, pagos reales (o simulación) y **panel de administración**.
+> Guía de arranque: **[INICIO.md](./INICIO.md)**
+
+**Visual Studio 2022:** abrí **`NEXA.sln`** → clic derecho en **`Nexa.Web`** → *Set as Startup Project* → **F5**  
+**Cursor/VS Code:** abrí **`NEXA.code-workspace`**  
+**Windows rápido:** ejecutá **`iniciar.bat`**
+
+```bash
+npm install
+npm run solution:start
+# → http://localhost:3000
+```
 
 ---
 

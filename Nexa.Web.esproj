@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.VisualStudio.JavaScript.Sdk/1.0.2191419">
+  <PropertyGroup>
+    <StartupCommand>npm run solution:start</StartupCommand>
+    <ShouldRunNpmInstall>true</ShouldRunNpmInstall>
+    <BuildCommand>npm run build</BuildCommand>
+    <ProductionBuildCommand>npm run build</ProductionBuildCommand>
+  </PropertyGroup>
+</Project>
