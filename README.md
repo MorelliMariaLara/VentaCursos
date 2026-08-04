@@ -34,6 +34,21 @@ O abrí **`NEXA.sln`** → `Nexa.Web` → **F5** / **`iniciar.bat`**.
 
 Connection string en `Nexa.Web/appsettings.json` → `ConnectionStrings:CursoVentas`.
 
+## Mercado Pago (Checkout Bricks + QR)
+
+Configurá en `.env` o `appsettings.json`:
+
+```env
+MP_PUBLIC_KEY=TEST-xxxx
+MP_ACCESS_TOKEN=TEST-xxxx
+APP_URL=https://tu-dominio
+MP_ALLOW_SIMULATE=false
+```
+
+Guía completa: [`docs/MERCADOPAGO.md`](./docs/MERCADOPAGO.md)
+
+El aula/video **solo se habilita con pago acreditado** (`approved`).
+
 ## Cuentas demo
 
 | Rol | Email | Contraseña |

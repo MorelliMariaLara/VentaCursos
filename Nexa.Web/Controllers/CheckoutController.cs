@@ -13,13 +13,24 @@ public class CheckoutController : Controller
     public CheckoutController(StoreService store) => _store = store;
 
     [HttpGet]
-    public async Task<IActionResult> Index(string slug, string? status)
+    public async Task<IActionResult> Index(string slug, string? status, string? orderId)
     {
         var course = await _store.GetCourseBySlugAsync(slug);
         if (course == null) return NotFound();
 
         var enrollment = await _store.GetEnrollmentAsync(AuthCookie.UserId(User)!, course.Id);
         if (enrollment != null) return RedirectToAction("Index", "Learn", new { slug });
+
+        // Si vuelve de MP con pago ya acreditado vía webhook, reintentar fulfill
+        if (!string.IsNullOrEmpty(orderId) && status is "success" or "approved" or "paid")
+        {
+            var order = await _store.GetOrderByIdAsync(orderId);
+            if (order != null && order.UserId == AuthCookie.UserId(User) && order.Status == "paid")
+            {
+                await _store.FulfillPaidOrderAsync(order.Id);
+                return RedirectToAction("Index", "Learn", new { slug });
+            }
+        }
 
         return View(new CheckoutViewModel
         {

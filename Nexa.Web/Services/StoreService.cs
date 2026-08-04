@@ -310,6 +310,20 @@ public class StoreService
         if (await _db.Orders.AnyAsync(o => o.UserId == userId && o.CourseId == courseId && o.Status == "paid"))
             throw new InvalidOperationException("ALREADY_OWNED");
 
+        // Reutiliza orden pending existente del mismo curso (evita duplicados al refrescar checkout)
+        var existing = await _db.Orders
+            .Where(o => o.UserId == userId && o.CourseId == courseId && (o.Status == "pending" || o.Status == "in_process"))
+            .OrderByDescending(o => o.CreatedAt)
+            .FirstOrDefaultAsync();
+        if (existing != null)
+        {
+            existing.Amount = amount;
+            existing.Currency = currency;
+            existing.UpdatedAt = DateTime.UtcNow;
+            await _db.SaveChangesAsync();
+            return MapOrder(existing);
+        }
+
         var now = DateTime.UtcNow;
         var order = new OrderEntity
         {
