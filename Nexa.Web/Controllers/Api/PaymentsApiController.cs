@@ -61,10 +61,17 @@ public class PaymentsApiController : ControllerBase
             var prefId = pref.GetProperty("id").ToString();
             await _store.UpdateOrderAsync(order.Id, o => o.PreferenceId = prefId);
 
+            string? initPoint = pref.TryGetProperty("init_point", out var ip) ? ip.GetString() : null;
+            string? sandboxInit = pref.TryGetProperty("sandbox_init_point", out var sip) ? sip.GetString() : null;
+
             return Ok(new
             {
                 orderId = order.Id,
                 preferenceId = prefId,
+                initPoint,
+                sandboxInitPoint = sandboxInit,
+                // En local con credenciales APP_USR conviene init_point productivo
+                checkoutUrl = initPoint ?? sandboxInit,
                 simulateOnly = false,
                 amount = course.Price,
                 currency = course.Currency,
@@ -77,6 +84,7 @@ public class PaymentsApiController : ControllerBase
         catch (Exception ex)
         {
             Console.Error.WriteLine(ex);
+            Console.Error.WriteLine(_payments.CredentialDiagnostics());
             return StatusCode(500, new { error = PaymentService.FriendlyError(ex.Message) });
         }
     }
@@ -189,27 +197,36 @@ public class PaymentsApiController : ControllerBase
         if (order == null || order.UserId != userId) return NotFound(new { error = "Orden no encontrada" });
         var course = await _store.GetCourseByIdAsync(order.CourseId);
 
-        // Si hay paymentId y aún no está paid, consultamos a MP (por si el webhook no llegó)
-        if (!string.IsNullOrEmpty(order.PaymentId) && order.Status != "paid" && _payments.IsMercadoPagoConfigured())
+        // Consulta a MP por paymentId o por external_reference (Wallet Brick / Checkout Pro)
+        if (order.Status != "paid" && _payments.IsMercadoPagoConfigured())
         {
             try
             {
-                var payment = await _payments.GetPaymentAsync(order.PaymentId);
-                var status = PaymentService.MapMpStatus(
-                    payment.TryGetProperty("status", out var st) ? st.GetString() : null);
-                if (status != order.Status)
+                JsonElement? payment = null;
+                if (!string.IsNullOrEmpty(order.PaymentId))
+                    payment = await _payments.GetPaymentAsync(order.PaymentId);
+                else
+                    payment = await _payments.FindLatestPaymentByExternalReferenceAsync(order.Id);
+
+                if (payment.HasValue)
                 {
+                    var p = payment.Value;
+                    var status = PaymentService.MapMpStatus(
+                        p.TryGetProperty("status", out var st) ? st.GetString() : null);
+                    var paymentId = p.TryGetProperty("id", out var id) ? id.ToString() : order.PaymentId;
                     await _store.UpdateOrderAsync(order.Id, o =>
                     {
                         o.Status = status;
-                        o.StatusDetail = payment.TryGetProperty("status_detail", out var sd) ? sd.GetString() : null;
+                        o.PaymentId = paymentId;
+                        o.StatusDetail = p.TryGetProperty("status_detail", out var sd) ? sd.GetString() : null;
+                        o.PaymentMethod = p.TryGetProperty("payment_method_id", out var pm) ? pm.GetString() : o.PaymentMethod;
                     });
                     order = (await _store.GetOrderByIdAsync(order.Id))!;
-                }
-                if (PaymentService.IsAccredited(status))
-                {
-                    if (await _store.GetEnrollmentAsync(userId, order.CourseId) == null)
-                        await _store.FulfillPaidOrderAsync(order.Id);
+                    if (PaymentService.IsAccredited(status))
+                    {
+                        if (await _store.GetEnrollmentAsync(userId, order.CourseId) == null)
+                            await _store.FulfillPaidOrderAsync(order.Id);
+                    }
                 }
             }
             catch (Exception ex)

@@ -6,20 +6,23 @@
     <div class="wrap grid-2">
         <div>
             <h2>@Model.Course.Title</h2>
-            <p class="lead">Pago seguro con Mercado Pago · Checkout Bricks (tarjeta o QR)</p>
+            <p class="lead">Pago seguro con Mercado Pago (Checkout Pro · QR / tarjeta)</p>
             <p class="price" style="font-size:1.4rem">@Model.PriceLabel</p>
-            <p class="hint">El acceso al aula y a los videos se habilita <strong>solo cuando el pago esté acreditado</strong>.</p>
+            <p class="hint">El aula y los videos se habilitan <strong>solo cuando el pago esté acreditado</strong>.</p>
             @if (!string.IsNullOrEmpty(Model.Status))
             {
                 <p class="hint" id="statusHint">Estado: @Model.Status</p>
             }
         </div>
         <div class="panel">
-            <div id="brick"></div>
-            <div id="statusBrick" style="display:none;margin-top:1rem"></div>
+            <div id="walletBrick_container"></div>
+            <a class="btn btn-primary" id="openCheckoutBtn" href="#" target="_blank" rel="noopener"
+               style="display:none;width:100%;margin-top:0.8rem;text-align:center">
+                Abrir Checkout Mercado Pago
+            </a>
             <div id="pendingBox" style="display:none;margin-top:1rem">
                 <p class="ok" id="pendingMsg">Esperando acreditación del pago…</p>
-                <p class="hint">Si pagaste con QR, mantené esta pantalla abierta. En cuanto Mercado Pago confirme el pago, te llevamos al aula.</p>
+                <p class="hint">Pagá en la ventana de Mercado Pago (QR o tarjeta). Después volvé acá y esperá, o tocá “Verificar pago”.</p>
                 <div class="cta-row" style="margin-top:0.8rem">
                     <button class="btn btn-primary" id="refreshStatusBtn" type="button">Verificar pago</button>
                 </div>
@@ -35,24 +38,15 @@
 @section Scripts {
 <script>
   const slug = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Course.Slug));
-  const price = @Model.Course.Price.ToString(System.Globalization.CultureInfo.InvariantCulture);
-  const payerEmail = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(User.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value ?? ""));
   const initialStatus = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Status ?? ""));
   const urlOrderId = new URLSearchParams(location.search).get("orderId");
 
   let orderId = urlOrderId;
   let pollTimer = null;
-  let mp = null;
-  let bricks = null;
 
   function showPending(msg) {
     document.getElementById("pendingBox").style.display = "block";
     if (msg) document.getElementById("pendingMsg").textContent = msg;
-  }
-
-  function hideBrick() {
-    const el = document.getElementById("brick");
-    if (el) el.style.display = "none";
   }
 
   async function checkOrder() {
@@ -69,9 +63,7 @@
 
   function startPoll() {
     stopPoll();
-    pollTimer = setInterval(() => {
-      checkOrder().catch(() => {});
-    }, 3500);
+    pollTimer = setInterval(() => { checkOrder().catch(() => {}); }, 4000);
   }
 
   function stopPoll() {
@@ -79,42 +71,104 @@
     pollTimer = null;
   }
 
-  async function showStatusScreen(paymentId) {
-    if (!paymentId || !bricks) return;
-    const box = document.getElementById("statusBrick");
-    box.style.display = "block";
-    box.innerHTML = "";
+  document.getElementById("refreshStatusBtn").onclick = () => {
+    checkOrder().catch((e) => { document.getElementById("err").textContent = e.message; });
+  };
+
+  function wireOpenCheckout(checkoutUrl) {
+    const openBtn = document.getElementById("openCheckoutBtn");
+    if (!checkoutUrl) return;
+    openBtn.href = checkoutUrl;
+    openBtn.style.display = "inline-flex";
+    openBtn.onclick = () => {
+      showPending("Completá el pago en Mercado Pago. Esta pantalla consulta sola cuando acredite.");
+      startPoll();
+    };
+  }
+
+  async function mountWallet(cfg, pref) {
+    const hint = document.getElementById("cfgHint");
+    hint.textContent = "Pagá con Mercado Pago (incluye QR). Luego volvé a esta pestaña para desbloquear el curso.";
+    wireOpenCheckout(pref.checkoutUrl);
+
+    await new Promise((resolve, reject) => {
+      const s = document.createElement("script");
+      s.src = "https://sdk.mercadopago.com/js/v2";
+      s.onload = resolve;
+      s.onerror = () => reject(new Error("No se pudo cargar el SDK de Mercado Pago"));
+      document.body.appendChild(s);
+    });
+
     try {
-      await bricks.create("statusScreen", "statusBrick", {
-        initialization: { paymentId: String(paymentId) },
+      const mp = new MercadoPago(cfg.publicKey, { locale: "es-AR" });
+      const bricksBuilder = mp.bricks();
+      await bricksBuilder.create("wallet", "walletBrick_container", {
+        initialization: {
+          preferenceId: pref.preferenceId,
+          redirectMode: "blank",
+        },
         customization: {
-          visual: { showExternalReference: true },
+          texts: {
+            valueProp: "smart_option",
+          },
         },
         callbacks: {
-          onError: (err) => console.warn("statusScreen", err),
+          onReady: () => {
+            showPending("Cuando termines de pagar en Mercado Pago, el curso se habilita acá automáticamente.");
+            startPoll();
+          },
+          onSubmit: () => {
+            showPending("Pago iniciado. Esperando acreditación de Mercado Pago…");
+            startPoll();
+            return Promise.resolve();
+          },
+          onError: (err) => {
+            console.error(err);
+            const msg = err?.message || err?.cause || "No se pudo cargar Wallet Brick";
+            document.getElementById("err").textContent = msg;
+            if (pref.checkoutUrl) {
+              hint.textContent = "Usá «Abrir Checkout Mercado Pago» — es el mismo pago (Checkout Pro / QR).";
+              wireOpenCheckout(pref.checkoutUrl);
+              startPoll();
+            }
+          },
         },
       });
     } catch (e) {
-      console.warn(e);
+      console.error(e);
+      document.getElementById("err").textContent = e.message || "Error al iniciar Mercado Pago";
+      if (pref.checkoutUrl) {
+        hint.textContent = "Usá el botón «Abrir Checkout Mercado Pago».";
+        wireOpenCheckout(pref.checkoutUrl);
+        startPoll();
+      }
     }
   }
-
-  document.getElementById("refreshStatusBtn").onclick = () => {
-    checkOrder().catch((e) => {
-      document.getElementById("err").textContent = e.message;
-    });
-  };
 
   (async () => {
     const cfg = await api("/api/payments/config");
     const hint = document.getElementById("cfgHint");
+    const returning =
+      !!orderId &&
+      ["pending", "in_process", "success", "approved", "failure", "rejected"].includes(initialStatus);
 
-    // Si volvemos de MP con orderId pendiente, poll inmediato
-    if (orderId && (initialStatus === "pending" || initialStatus === "in_process" || initialStatus === "success")) {
+    // Al volver de Mercado Pago: consultar la orden; no crear otra preferencia si sigue pendiente
+    if (returning) {
       showPending("Confirmando el estado de tu pago…");
-      hideBrick();
       startPoll();
-      await checkOrder();
+      const data = await checkOrder();
+      if (data && data.accredited) return;
+
+      const failedStatuses = ["failure", "rejected", "cancelled", "failed", "refunded"];
+      const failed =
+        failedStatuses.includes(initialStatus) ||
+        (data && failedStatuses.includes(data.status));
+
+      if (!failed) {
+        hint.textContent = "Si ya pagaste, tocá «Verificar pago». Seguimos consultando a Mercado Pago…";
+        return;
+      }
+      hint.textContent = "El pago anterior falló. Generamos un nuevo checkout abajo.";
     }
 
     const pref = await api("/api/payments/preference", {
@@ -126,7 +180,7 @@
     const simBtn = document.getElementById("simulateBtn");
     if (cfg.simulate || pref.simulateOnly) {
       simBtn.style.display = "inline-flex";
-      hint.textContent = "Mercado Pago no está configurado: podés simular el pago en local. Para QR real, cargá MP_PUBLIC_KEY y MP_ACCESS_TOKEN.";
+      hint.textContent = "Mercado Pago no está configurado: podés simular el pago en local.";
       simBtn.onclick = async () => {
         try {
           const result = await api("/api/payments/process", {
@@ -138,92 +192,23 @@
           document.getElementById("err").textContent = e.message;
         }
       };
+      return;
     }
 
     if (cfg.configured && cfg.publicKey && pref.preferenceId) {
-      hint.textContent = "Elegí tarjeta o Mercado Pago (QR). El curso se desbloquea al acreditar el pago.";
-      const s = document.createElement("script");
-      s.src = "https://sdk.mercadopago.com/js/v2";
-      s.onload = async () => {
-        mp = new MercadoPago(cfg.publicKey, { locale: "es-AR" });
-        bricks = mp.bricks();
-
-        // Si ya hay pago pendiente, no re-montar el brick de pago
-        if (document.getElementById("pendingBox").style.display === "block") return;
-
-        await bricks.create("payment", "brick", {
-          initialization: {
-            amount: Number(price),
-            preferenceId: pref.preferenceId,
-            payer: { email: payerEmail || undefined },
-          },
-          customization: {
-            paymentMethods: {
-              creditCard: "all",
-              debitCard: "all",
-              ticket: "all",
-              bankTransfer: "all",
-              mercadoPago: "all", // Wallet + QR Mercado Pago
-              maxInstallments: 12,
-            },
-            visual: {
-              style: { theme: "default" },
-            },
-          },
-          callbacks: {
-            onReady: () => {},
-            onSubmit: ({ selectedPaymentMethod, formData }) => {
-              return new Promise(async (resolve, reject) => {
-                try {
-                  document.getElementById("err").textContent = "";
-                  const result = await api("/api/payments/process", {
-                    method: "POST",
-                    body: JSON.stringify({
-                      orderId,
-                      formData,
-                      selectedPaymentMethod,
-                    }),
-                  });
-
-                  resolve();
-
-                  if (result.accredited) {
-                    location.href = result.redirect;
-                    return;
-                  }
-
-                  // Pendiente (QR escaneado / en proceso): mostrar estado y poll
-                  hideBrick();
-                  showPending(
-                    result.status === "pending" || result.status === "in_process"
-                      ? "Pago pendiente de acreditación. Escaneá el QR o esperá la confirmación de Mercado Pago."
-                      : "Estado del pago: " + result.status
-                  );
-                  if (result.paymentId) await showStatusScreen(result.paymentId);
-                  startPoll();
-                } catch (e) {
-                  document.getElementById("err").textContent = e.message || "Error al procesar el pago";
-                  reject();
-                }
-              });
-            },
-            onError: (err) => {
-              console.error(err);
-              document.getElementById("err").textContent =
-                err?.message || err?.cause || "Error en Checkout Bricks de Mercado Pago";
-            },
-          },
-        });
-      };
-      document.body.appendChild(s);
-    } else if (!cfg.simulate && !pref.simulateOnly) {
+      await mountWallet(cfg, pref);
+    } else {
       document.getElementById("err").textContent =
-        "Configurá MP_PUBLIC_KEY y MP_ACCESS_TOKEN en .env o appsettings.json";
+        "Configurá MP_PUBLIC_KEY y MP_ACCESS_TOKEN en .env (mismo par de la app de Pruebas) y reiniciá.";
     }
   })().catch((e) => {
     document.getElementById("err").textContent = e.message;
   });
 
   window.addEventListener("beforeunload", stopPoll);
+  window.addEventListener("focus", () => { checkOrder().catch(() => {}); });
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") checkOrder().catch(() => {});
+  });
 </script>
 }

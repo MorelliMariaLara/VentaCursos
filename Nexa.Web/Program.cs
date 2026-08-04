@@ -76,6 +76,13 @@ app.Urls.Add($"http://0.0.0.0:{port}");
 Console.WriteLine();
 Console.WriteLine($"  SANTICAZA Capacitaciones → http://localhost:{port}");
 Console.WriteLine(@"  SQL: LARA-NB\SQLEXPRESS02 · CursoVentas");
+try
+{
+    using var scopeDiag = app.Services.CreateScope();
+    var pay = scopeDiag.ServiceProvider.GetRequiredService<PaymentService>();
+    Console.WriteLine("  " + pay.CredentialDiagnostics());
+}
+catch { /* ignore */ }
 Console.WriteLine("  Alumno: demo@santicaza.com / demo1234");
 Console.WriteLine("  Admin:  admin@santicaza.com / admin1234");
 Console.WriteLine();

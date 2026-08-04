@@ -19,7 +19,7 @@ En **Tus integraciones** → tu aplicación → **Datos de integración** → **
 
 | Credencial | Dónde se usa | Ejemplo |
 | --- | --- | --- |
-| **Public Key** | Frontend (Payment Brick) | `TEST-...` o `APP_USR-...` |
+| **Public Key** | Frontend (Wallet Brick / Checkout Pro) | `TEST-...` o `APP_USR-...` |
 | **Access Token** | Backend (API) | empieza con `APP_USR-...` o `TEST-...` |
 
 > Usá siempre las de **prueba** hasta validar. Después cambiá por las de **producción**.
@@ -61,11 +61,11 @@ Reiniciá la app (`dotnet run --project Nexa.Web`).
 
 ## 4. Qué hace el checkout en SANTICAZA
 
-1. Alumno compra un curso → se crea orden `pending` + **preference**.
-2. Se muestra el **Payment Brick** (tarjeta + **Mercado Pago / QR**).
-3. Al pagar, el backend llama a la API de pagos con tu **Access Token**.
-4. **Solo si el estado es `approved` (acreditado)** se habilitan video y lecciones.
-5. Si queda pendiente (QR sin pagar), la pantalla espera y consulta el estado hasta acreditar.
+1. Alumno compra un curso → se crea orden `pending` + **preference** (Checkout Pro).
+2. Se muestra el **Wallet Brick** (botón oficial) y un enlace de respaldo a `init_point` (QR / tarjeta / dinero en cuenta).
+3. El alumno paga en Mercado Pago; en local **no hay webhook** a localhost.
+4. La pantalla hace **polling** (`GET /api/payments/order/{id}`), buscando el pago por `external_reference`.
+5. **Solo si el estado es `approved` (acreditado)** se habilitan video y lecciones.
 
 ## 5. Webhook (cuando tengas URL pública)
 
@@ -99,7 +99,7 @@ Este proyecto es **ASP.NET Core**: no hace falta SDK PHP. El Access Token se lee
 | Método | Ruta | Uso |
 | --- | --- | --- |
 | GET | `/api/payments/config` | Public Key al front |
-| POST | `/api/payments/preference` | Preference para el Brick / QR |
-| POST | `/api/payments/process` | Procesa el pago del Brick |
-| GET | `/api/payments/order/{id}` | Polling hasta acreditar |
+| POST | `/api/payments/preference` | Preference Checkout Pro (`init_point` + Wallet Brick) |
+| POST | `/api/payments/process` | Simulación local / legado Brick |
+| GET | `/api/payments/order/{id}` | Polling hasta acreditar (busca por `external_reference`) |
 | POST/GET | `/api/webhooks/mercadopago` | Notificaciones de MP |

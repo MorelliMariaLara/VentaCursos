@@ -73,7 +73,8 @@ public class PaymentService
                     ["title"] = input.Title,
                     ["description"] = $"Curso SANTICAZA: {input.Title}",
                     ["quantity"] = 1,
-                    ["unit_price"] = input.Amount,
+                    // double evita rarezas de serialización decimal en JsonObject
+                    ["unit_price"] = (double)input.Amount,
                     ["currency_id"] = input.Currency,
                 },
             },
@@ -163,6 +164,31 @@ public class PaymentService
 
     public Task<JsonElement> GetPaymentAsync(string paymentId) =>
         MpFetchAsync($"/v1/payments/{paymentId}", HttpMethod.Get);
+
+    /// <summary>
+    /// Busca pagos de una orden (útil en local sin webhook, tras Wallet Brick / Checkout Pro).
+    /// </summary>
+    public async Task<JsonElement?> FindLatestPaymentByExternalReferenceAsync(string externalReference)
+    {
+        var path =
+            "/v1/payments/search?sort=date_created&criteria=desc&external_reference=" +
+            Uri.EscapeDataString(externalReference);
+        var result = await MpFetchAsync(path, HttpMethod.Get);
+        if (!result.TryGetProperty("results", out var results) || results.ValueKind != JsonValueKind.Array)
+            return null;
+        foreach (var item in results.EnumerateArray())
+            return item.Clone();
+        return null;
+    }
+
+    public string CredentialDiagnostics()
+    {
+        var pk = PublicKey ?? "";
+        var tk = AccessToken ?? "";
+        static string Mask(string v) =>
+            v.Length <= 12 ? "(corto)" : $"{v[..10]}…{v[^6..]} (len={v.Length})";
+        return $"MP configurado={IsMercadoPagoConfigured()} PK={Mask(pk)} TK={Mask(tk)} AppUrl={AppUrl} Webhook={(WebhookUrl ?? "(local: omitido)")}";
+    }
 
     public static string MapMpStatus(string? status) => status switch
     {
