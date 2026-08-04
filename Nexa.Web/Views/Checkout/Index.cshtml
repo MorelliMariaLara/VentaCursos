@@ -194,10 +194,17 @@
     }
     orderId = pref.orderId || orderId;
 
+    const canUseMp = cfg.configured && cfg.publicKey && pref.preferenceId && !pref.simulateOnly;
+    if (canUseMp) {
+      await mountWallet(cfg, pref);
+      return;
+    }
+
     const simBtn = document.getElementById("simulateBtn");
     if (cfg.simulate || pref.simulateOnly) {
       simBtn.style.display = "inline-flex";
       hint.textContent = "Mercado Pago no está configurado: podés simular el pago en local.";
+      if (cfg.diagnostics) hint.textContent += " · " + cfg.diagnostics;
       simBtn.onclick = async () => {
         try {
           const result = await api("/api/payments/process", {
@@ -212,12 +219,9 @@
       return;
     }
 
-    if (cfg.configured && cfg.publicKey && pref.preferenceId) {
-      await mountWallet(cfg, pref);
-    } else {
-      document.getElementById("err").textContent =
-        "Configurá MP_PUBLIC_KEY y MP_ACCESS_TOKEN en .env (mismo par de Pruebas) y reiniciá.";
-    }
+    document.getElementById("err").textContent =
+      cfg.problem ||
+      "Configurá MP_PUBLIC_KEY y MP_ACCESS_TOKEN en .env (mismo par de Pruebas) y reiniciá.";
   })().catch((e) => {
     showApiError(e);
   });

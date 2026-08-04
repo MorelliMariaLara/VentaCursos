@@ -89,10 +89,14 @@ public class PaymentService
 
     public bool AllowSimulatePayments()
     {
+        // Si MP está bien configurado, NUNCA forzar solo-simulador
+        // (antes launchSettings con MP_ALLOW_SIMULATE=true tapaba el Checkout Pro).
+        if (IsMercadoPagoConfigured()) return false;
+
         var flag = _config["MP_ALLOW_SIMULATE"];
         if (string.Equals(flag, "true", StringComparison.OrdinalIgnoreCase)) return true;
         if (string.Equals(flag, "false", StringComparison.OrdinalIgnoreCase)) return false;
-        return !IsMercadoPagoConfigured();
+        return true; // sin credenciales → permitir demo local
     }
 
     public string? GetPublicKey() => PublicKey;

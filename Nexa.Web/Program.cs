@@ -7,6 +7,19 @@ var builder = WebApplication.CreateBuilder(args);
 
 LoadEnvFiles(builder);
 RepairBrokenMercadoPagoCredentials(builder);
+// Evitar que Visual Studio / launchSettings dejen el simulador prendido
+var mpPk = builder.Configuration["MP_PUBLIC_KEY"] ?? "";
+var mpTk = builder.Configuration["MP_ACCESS_TOKEN"] ?? "";
+if ((mpPk.StartsWith("TEST-", StringComparison.OrdinalIgnoreCase) ||
+     mpPk.StartsWith("APP_USR-", StringComparison.OrdinalIgnoreCase)) &&
+    (mpTk.StartsWith("TEST-", StringComparison.OrdinalIgnoreCase) ||
+     mpTk.StartsWith("APP_USR-", StringComparison.OrdinalIgnoreCase)) &&
+    !mpPk.Contains("TEST-APP_USR", StringComparison.OrdinalIgnoreCase) &&
+    !mpTk.Contains("TEST-APP_USR", StringComparison.OrdinalIgnoreCase))
+{
+    Environment.SetEnvironmentVariable("MP_ALLOW_SIMULATE", "false");
+    builder.Configuration["MP_ALLOW_SIMULATE"] = "false";
+}
 
 var connectionString =
     builder.Configuration.GetConnectionString("CursoVentas")
