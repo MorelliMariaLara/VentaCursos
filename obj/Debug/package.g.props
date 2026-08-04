@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project>
+  <PropertyGroup>
+    <PackageJsonName Condition="$(PackageJsonName) == ''">nexa-web</PackageJsonName>
+    <PackageJsonVersion Condition="$(PackageJsonVersion) == ''">3.0.0</PackageJsonVersion>
+    <PackageJsonPrivate Condition="$(PackageJsonPrivate) == ''">true</PackageJsonPrivate>
+    <PackageJsonDescription Condition="$(PackageJsonDescription) == ''">NEXA — venta de cursos sin dependencias npm (solo Node.js)</PackageJsonDescription>
+    <PackageJsonEnginesNode Condition="$(PackageJsonEnginesNode) == ''">&gt;=20</PackageJsonEnginesNode>
+    <PackageJsonScriptsDev Condition="$(PackageJsonScriptsDev) == ''">node server/index.js</PackageJsonScriptsDev>
+    <PackageJsonScriptsStart Condition="$(PackageJsonScriptsStart) == ''">node server/index.js</PackageJsonScriptsStart>
+    <PackageJsonScriptsInicio Condition="$(PackageJsonScriptsInicio) == ''">node server/index.js</PackageJsonScriptsInicio>
+  </PropertyGroup>
+</Project>
