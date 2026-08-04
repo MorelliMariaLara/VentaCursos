@@ -15,11 +15,7 @@
             }
         </div>
         <div class="panel">
-            <a class="btn btn-primary" id="openCheckoutBtn" href="#" target="_blank" rel="noopener"
-               style="display:none;width:100%;text-align:center">
-                Pagar con Mercado Pago
-            </a>
-            <div id="walletBrick_container" style="margin-top:0.8rem"></div>
+            <div id="walletBrick_container"></div>
             <div id="pendingBox" style="display:none;margin-top:1rem">
                 <p class="ok" id="pendingMsg">Esperando acreditación del pago…</p>
                 <p class="hint">Pagá en la ventana de Mercado Pago (QR o tarjeta). Después volvé acá y esperá, o tocá “Verificar pago”.</p>
@@ -75,37 +71,21 @@
     checkOrder().catch((e) => { document.getElementById("err").textContent = e.message; });
   };
 
-  function wireOpenCheckout(checkoutUrl) {
-    const openBtn = document.getElementById("openCheckoutBtn");
-    if (!checkoutUrl) return;
-    openBtn.href = checkoutUrl;
-    openBtn.style.display = "inline-flex";
-    openBtn.onclick = () => {
-      showPending("Completá el pago en Mercado Pago. Esta pantalla consulta sola cuando acredite.");
-      startPoll();
-    };
-  }
-
   function showApiError(e) {
     const msg = e?.message || "Error";
     const diag = e?.data?.diagnostics;
     document.getElementById("err").textContent = msg;
     if (diag) {
-      document.getElementById("cfgHint").textContent =
-        "Credenciales cargadas: " + diag + " — si ves APP_USR viejo, cerrá la app, git pull, y volvé a abrir (el .env TEST debe pisar el entorno).";
+      document.getElementById("cfgHint").textContent = "Credenciales cargadas: " + diag;
     }
   }
 
   async function mountWallet(cfg, pref) {
     const hint = document.getElementById("cfgHint");
     hint.textContent = cfg.testCredentials
-      ? "Modo prueba (TEST). Usá el botón verde o el de Mercado Pago. Pagá con un usuario de prueba."
+      ? "Modo prueba (TEST). Pagá con el botón de Mercado Pago y un usuario de prueba."
       : "Pagá con Mercado Pago. Luego volvé a esta pestaña para desbloquear el curso.";
-    wireOpenCheckout(pref.checkoutUrl);
-    showPending("Cuando termines de pagar, el curso se habilita acá automáticamente.");
-    startPoll();
 
-    // El botón init_point/sandbox ya alcanza; Wallet Brick es opcional.
     try {
       await new Promise((resolve, reject) => {
         const s = document.createElement("script");
@@ -125,7 +105,10 @@
           texts: { valueProp: "smart_option" },
         },
         callbacks: {
-          onReady: () => startPoll(),
+          onReady: () => {
+            showPending("Cuando termines de pagar, el curso se habilita acá automáticamente.");
+            startPoll();
+          },
           onSubmit: () => {
             showPending("Pago iniciado. Esperando acreditación…");
             startPoll();
@@ -133,14 +116,14 @@
           },
           onError: (err) => {
             console.error(err);
-            // No tapamos el botón principal: el link de Checkout Pro sigue válido
-            hint.textContent = "Usá el botón «Pagar con Mercado Pago» de arriba (Checkout Pro / sandbox).";
+            document.getElementById("err").textContent =
+              err?.message || "No se pudo cargar el botón de Mercado Pago. Recargá la página.";
           },
         },
       });
     } catch (e) {
       console.error(e);
-      hint.textContent = "Usá el botón «Pagar con Mercado Pago» de arriba.";
+      document.getElementById("err").textContent = e.message || "Error al iniciar Mercado Pago";
     }
   }
 
