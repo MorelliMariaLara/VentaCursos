@@ -1,0 +1,12 @@
+node_modules
+.next
+.git
+data
+*.md
+.env*
+!.env.example
+AGENTS.md
+CLAUDE.md
+tmp
+coverage
+.DS_Store
