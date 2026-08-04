@@ -29,26 +29,16 @@ if not exist ".env.local" (
   echo Creado .env.local
 )
 
-echo Ejecutando npm install...
-call npm install --legacy-peer-deps
-if errorlevel 1 (
-  echo.
-  echo npm install fallo. Reintentando limpio...
-  if exist "node_modules" rmdir /s /q "node_modules"
-  if exist "package-lock.json" del /f /q "package-lock.json"
-  call npm cache clean --force
-  call npm install --legacy-peer-deps
-  if errorlevel 1 (
-    echo.
-    echo ERROR: npm install salio con codigo 1.
-    echo Revisá:
-    echo  1^) Node.js sea version 20 o superior
-    echo  2^) Que la carpeta no este bloqueada por antivirus
-    echo  3^) Ejecutar PowerShell/CMD como usuario normal ^(no admin obligatorio^)
-    echo  4^) Pegame el error completo que aparece arriba
+if not exist "node_modules\next\dist\bin\next" (
+  echo Falta Next.js. Usando instalacion limpia...
+  call "%~dp0install.bat"
+  if not exist "node_modules\next\dist\bin\next" (
+    echo ERROR: despues de install.bat sigue faltando Next.
     pause
     exit /b 1
   )
+) else (
+  echo Dependencias ya presentes. Si npm falla, corre install.bat
 )
 
 echo.
