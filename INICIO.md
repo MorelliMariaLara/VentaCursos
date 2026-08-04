@@ -28,11 +28,24 @@ Tiene que mostrar algo como `v20.x` o `v22.x`. Si dice que no reconoce `node`, e
 
 ## Si `npm install` sale con código 1
 
-En Windows suele fallar por `node_modules` a medias o archivos bloqueados (Visual Studio / antivirus).
+Tu log muestra que npm **renombró todo `node_modules`** y falló al instalar los binarios de Windows:
+
+- `@next/swc-win32-x64-msvc` (obligatorio para Next en Windows)
+- `lightningcss-win32-x64-msvc`
+- `@tailwindcss/oxide-win32-x64-msvc`
+
+Eso pasa cuando Visual Studio, antivirus o un `npm` anterior dejan archivos bloqueados.
+
+### Reparación (en este orden)
 
 1. Cerrá **Visual Studio** por completo  
-2. Doble clic en **`install.bat`**  
-   o en CMD:
+2. En PowerShell (como Administrador), excluí la carpeta del antivirus:
+
+```powershell
+Add-MpPreference -ExclusionPath "C:\Users\Maria Lara\source\repos\VentaCursos"
+```
+
+3. Actualizá el repo y ejecutá el instalador:
 
 ```bat
 cd /d "C:\Users\Maria Lara\source\repos\VentaCursos"
@@ -40,12 +53,9 @@ git pull origin main
 install.bat
 ```
 
-Eso borra `node_modules`, limpia caché y reinstala todo.
+`install.bat` cierra `node`, borra `node_modules` corruptos (incluye carpetas `.xxxxx`), limpia caché y reinstala con binarios opcionales.
 
-Si aún falla:
-1. Pausá el antivirus un momento  
-2. Ejecutá `install.bat` como Administrador  
-3. Desactivá VPN si usás  
+Si aún falla: clic derecho en `install.bat` → **Ejecutar como administrador**, o reiniciá la PC y volvé a correrlo.  
 
 ---
 
