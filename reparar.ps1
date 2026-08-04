@@ -21,11 +21,11 @@ Write-Host "Node:" (node -v)
 Write-Host "npm :" (npm -v)
 Write-Host ""
 
-Write-Host "[1/5] Cerrando procesos node..." -ForegroundColor Yellow
+Write-Host "[1/6] Cerrando procesos node..." -ForegroundColor Yellow
 Get-Process node -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
 Start-Sleep -Seconds 2
 
-Write-Host "[2/5] Borrando node_modules..." -ForegroundColor Yellow
+Write-Host "[2/6] Borrando node_modules del proyecto..." -ForegroundColor Yellow
 if (Test-Path "node_modules") {
   cmd /c "rmdir /s /q node_modules" 2>$null
   if (Test-Path "node_modules") {
@@ -44,34 +44,53 @@ if (Test-Path "node_modules") {
 }
 Write-Host "OK: node_modules eliminado"
 
-Write-Host "[3/5] Limpiando cache npm..." -ForegroundColor Yellow
-npm cache clean --force | Out-Null
+Write-Host "[3/6] Borrando cache npm corrupta (arregla Yallist)..." -ForegroundColor Yellow
+$cacheDirs = @(
+  (Join-Path $env:LOCALAPPDATA "npm-cache"),
+  (Join-Path $env:APPDATA "npm-cache")
+)
+foreach ($dir in $cacheDirs) {
+  if (Test-Path $dir) {
+    Write-Host "  Borrando $dir"
+    Remove-Item -LiteralPath $dir -Recurse -Force -ErrorAction SilentlyContinue
+  }
+}
+npm cache clean --force 2>$null | Out-Null
 
-Write-Host "[4/5] Instalando dependencias (puede tardar varios minutos)..." -ForegroundColor Yellow
+Write-Host "[4/6] Reparando npm global (10.9.2)..." -ForegroundColor Yellow
+npm install -g npm@10.9.2
+if ($LASTEXITCODE -ne 0) {
+  Write-Host ""
+  Write-Host "No se pudo reparar npm desde aca." -ForegroundColor Red
+  Write-Host "Reinstala Node.js LTS desde https://nodejs.org" -ForegroundColor Yellow
+  Write-Host "Marca 'Add to PATH', reinicia PowerShell, y corre .\reparar.ps1 de nuevo." -ForegroundColor Yellow
+  exit 1
+}
+Write-Host "npm ahora:" (npm -v)
+
+Write-Host "[5/6] Instalando dependencias del proyecto..." -ForegroundColor Yellow
 npm install --legacy-peer-deps --prefer-online --no-audit --no-fund
 if ($LASTEXITCODE -ne 0) {
-  Write-Host "Primer intento fallo. Borrando package-lock y reintentando..." -ForegroundColor Yellow
+  Write-Host "Primer intento fallo. Reintentando sin package-lock..." -ForegroundColor Yellow
   Remove-Item -Force "package-lock.json" -ErrorAction SilentlyContinue
   if (Test-Path "node_modules") { cmd /c "rmdir /s /q node_modules" 2>$null }
   npm install --legacy-peer-deps --prefer-online --no-audit --no-fund
   if ($LASTEXITCODE -ne 0) {
     Write-Host ""
-    Write-Host "ERROR: npm install fallo." -ForegroundColor Red
-    Write-Host "Ejecuta como Admin y excluye la carpeta del antivirus:" -ForegroundColor Yellow
-    Write-Host "  Add-MpPreference -ExclusionPath `"$PWD`""
+    Write-Host "ERROR: npm install sigue fallando." -ForegroundColor Red
+    Write-Host "1) Reinstala Node.js LTS: https://nodejs.org" -ForegroundColor Yellow
+    Write-Host "2) Abri PowerShell como Administrador y corre:" -ForegroundColor Yellow
+    Write-Host "   Add-MpPreference -ExclusionPath `"$PWD`""
+    Write-Host "3) Volve a esta carpeta y corre .\reparar.ps1" -ForegroundColor Yellow
     exit 1
   }
 }
 
-Write-Host "[5/5] Verificando next..." -ForegroundColor Yellow
+Write-Host "[6/6] Verificando next..." -ForegroundColor Yellow
 $nextJs = Join-Path $PWD "node_modules\next\dist\bin\next"
-$nextCmd = Join-Path $PWD "node_modules\.bin\next.cmd"
 if (-not (Test-Path $nextJs)) {
   Write-Host "ERROR: next no quedo instalado en node_modules." -ForegroundColor Red
   exit 1
-}
-if (-not (Test-Path $nextCmd)) {
-  Write-Host "AVISO: falta node_modules\.bin\next.cmd - npm run dev usara node directo." -ForegroundColor Yellow
 }
 
 Write-Host ""
