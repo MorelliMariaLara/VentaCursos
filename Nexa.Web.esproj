@@ -5,6 +5,5 @@
     <ShouldRunNpmInstall>true</ShouldRunNpmInstall>
     <BuildCommand>npm run build</BuildCommand>
     <ProductionBuildCommand>npm run build</ProductionBuildCommand>
-    <RestoreCommand>npm install --legacy-peer-deps</RestoreCommand>
   </PropertyGroup>
 </Project>
