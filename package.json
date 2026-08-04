@@ -1,6 +1,6 @@
 {
-  "name": "venta-cursos",
-  "version": "0.1.0",
+  "name": "nexa-web",
+  "version": "1.0.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -12,7 +12,8 @@
     "solution:start": "bash scripts/start.sh dev",
     "solution:up": "bash scripts/start.sh docker",
     "solution:down": "bash scripts/start.sh down",
-    "solution:logs": "bash scripts/start.sh logs"
+    "solution:logs": "bash scripts/start.sh logs",
+    "inicio": "bash iniciar.sh"
   },
   "dependencies": {
     "@mercadopago/sdk-react": "^1.0.7",
@@ -38,5 +39,5 @@
     "tsx": "^4.23.5",
     "typescript": "^5"
   },
-  "description": "Plataforma NEXA de cursos y certificaciones con video cifrado"
+  "description": "NEXA Web — proyecto de inicio: venta de cursos, Mercado Pago y aula cifrada"
 }

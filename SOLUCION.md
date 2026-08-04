@@ -1,5 +1,11 @@
 # NEXA — Entrega de la solución
 
+## Proyecto de inicio
+
+- Abrí la carpeta `VentaCursos` o el archivo `NEXA.code-workspace` en Cursor/VS Code  
+- Configurá como inicio: **Run and Debug → “NEXA Web (proyecto de inicio)”**  
+- Paso a paso: ver **[INICIO.md](./INICIO.md)**
+
 ## Qué se entrega
 
 Plataforma lista para operar la **venta de cursos y certificaciones en video**, con:
