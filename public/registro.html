@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Registro · NEXA</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <header class="site-header" id="site-header"></header>
+  <main class="section"><div class="wrap">
+    <h2>Crear cuenta</h2>
+    <form class="form panel" id="form">
+      <label>Nombre <input name="name" required /></label>
+      <label>Email <input name="email" type="email" required /></label>
+      <label>Contraseña <input name="password" type="password" minlength="6" required /></label>
+      <button class="btn btn-primary" type="submit">Crear cuenta</button>
+      <p class="error" id="err"></p>
+    </form>
+  </div></main>
+  <script src="/js/common.js"></script>
+  <script>
+    document.getElementById("form").onsubmit = async (e) => {
+      e.preventDefault();
+      const fd = new FormData(e.target);
+      try {
+        await api("/api/auth/register", {
+          method: "POST",
+          body: JSON.stringify({
+            name: fd.get("name"),
+            email: fd.get("email"),
+            password: fd.get("password"),
+          }),
+        });
+        location.href = "/cursos.html";
+      } catch (err) {
+        document.getElementById("err").textContent = err.message;
+      }
+    };
+  </script>
+</body>
+</html>

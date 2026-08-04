@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Aula · NEXA</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <header class="site-header" id="site-header"></header>
+  <main class="section"><div class="wrap grid-2">
+    <div>
+      <h2 id="title">Aula</h2>
+      <p class="lead" id="lessonTitle">Elegí una lección</p>
+      <div class="player-shell">
+        <video id="video" controls controlsList="nodownload" disablePictureInPicture playsinline></video>
+        <div class="watermark" id="wm"></div>
+      </div>
+      <button class="btn btn-primary" id="completeBtn" type="button" style="margin-top:0.8rem" disabled>Marcar lección completa</button>
+      <p class="hint" id="msg"></p>
+    </div>
+    <aside class="panel">
+      <h3 style="margin-top:0">Lecciones</h3>
+      <div class="lesson-list" id="lessons"></div>
+      <p style="margin-top:1rem"><a id="certLink" class="btn btn-ghost" href="#" style="display:none">Ver certificado</a></p>
+    </aside>
+  </div></main>
+  <script src="/js/common.js"></script>
+  <script src="/js/player.js"></script>
+  <script>
+    const slug = qs("slug");
+    let currentLesson = null;
+    let progress = {};
+
+    document.addEventListener("contextmenu", (e) => e.preventDefault());
+
+    (async () => {
+      if (!slug) return location.href = "/cursos.html";
+      const user = await getUser();
+      if (!user) return location.href = "/login.html";
+      const data = await api("/api/courses/" + encodeURIComponent(slug));
+      if (!data.enrolled) return location.href = "/checkout.html?slug=" + slug;
+      progress = data.enrollment?.progress || {};
+      document.getElementById("title").textContent = data.course.title;
+      document.getElementById("certLink").href = "/certificado.html?slug=" + slug;
+      if (data.enrollment?.certificateCode) document.getElementById("certLink").style.display = "inline-flex";
+
+      const box = document.getElementById("lessons");
+      box.innerHTML = data.course.modules.map((m) => `
+        <div style="margin-bottom:0.7rem">
+          <strong>${m.title}</strong>
+          ${m.lessons.map((l) => `
+            <button class="lesson-btn ${progress[l.id] ? "done" : ""}" data-id="${l.id}" type="button">
+              ${l.title} · ${l.durationMinutes} min
+            </button>`).join("")}
+        </div>`).join("");
+
+      box.querySelectorAll(".lesson-btn").forEach((btn) => {
+        btn.onclick = () => playLesson(btn.dataset.id, btn);
+      });
+
+      document.getElementById("completeBtn").onclick = async () => {
+        if (!currentLesson) return;
+        const result = await api("/api/progress", {
+          method: "POST",
+          body: JSON.stringify({ slug, lessonId: currentLesson }),
+        });
+        progress = result.enrollment.progress || {};
+        document.querySelectorAll(".lesson-btn").forEach((b) => {
+          b.classList.toggle("done", Boolean(progress[b.dataset.id]));
+        });
+        document.getElementById("msg").textContent = "Lección marcada.";
+        if (result.enrollment.certificateCode) {
+          document.getElementById("certLink").style.display = "inline-flex";
+          document.getElementById("msg").textContent = "¡Certificado listo!";
+        }
+      };
+
+      const first = data.course.modules[0]?.lessons[0];
+      if (first) {
+        const btn = box.querySelector(`[data-id="${first.id}"]`);
+        playLesson(first.id, btn);
+      }
+    })();
+
+    async function playLesson(lessonId, btn) {
+      currentLesson = lessonId;
+      document.querySelectorAll(".lesson-btn").forEach((b) => b.classList.remove("active"));
+      if (btn) btn.classList.add("active");
+      document.getElementById("completeBtn").disabled = true;
+      document.getElementById("msg").textContent = "Cargando video cifrado...";
+      try {
+        const session = await api("/api/stream/session", {
+          method: "POST",
+          body: JSON.stringify({ slug, lessonId }),
+        });
+        document.getElementById("lessonTitle").textContent = session.lesson.moduleTitle + " · " + session.lesson.title;
+        document.getElementById("wm").textContent = "NEXA · " + session.watermark;
+        await loadEncryptedVideo(document.getElementById("video"), session);
+        document.getElementById("completeBtn").disabled = false;
+        document.getElementById("msg").textContent = "";
+      } catch (e) {
+        document.getElementById("msg").textContent = e.message;
+      }
+    }
+  </script>
+</body>
+</html>

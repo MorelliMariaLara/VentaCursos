@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Admin · NEXA</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <header class="site-header" id="site-header"></header>
+  <main class="section"><div class="wrap">
+    <h2>Admin NEXA</h2>
+    <p class="lead">Resumen, pedidos, usuarios y cursos.</p>
+    <div class="stats" id="stats"></div>
+    <div class="grid-2">
+      <div class="panel">
+        <h3>Pedidos</h3>
+        <div style="overflow:auto"><table class="table" id="orders"></table></div>
+      </div>
+      <div class="panel">
+        <h3>Usuarios</h3>
+        <div style="overflow:auto"><table class="table" id="users"></table></div>
+      </div>
+    </div>
+    <div class="panel" style="margin-top:1rem">
+      <h3>Cursos</h3>
+      <div id="courses"></div>
+      <hr style="border:0;border-top:1px solid var(--line);margin:1.2rem 0" />
+      <h3>Nuevo curso rápido</h3>
+      <form class="form" id="form" style="max-width:none">
+        <label>Título <input name="title" required /></label>
+        <label>Slug <input name="slug" required placeholder="mi-curso" /></label>
+        <label>Precio ARS <input name="price" type="number" required value="50000" /></label>
+        <label>Descripción <textarea name="description" rows="3"></textarea></label>
+        <button class="btn btn-primary" type="submit">Guardar curso</button>
+        <p class="error" id="err"></p>
+      </form>
+    </div>
+  </div></main>
+  <script src="/js/common.js"></script>
+  <script>
+    async function load() {
+      const user = await getUser();
+      if (!user || user.role !== "admin") return location.href = "/login.html";
+      const [stats, orders, users, courses] = await Promise.all([
+        api("/api/admin/stats"),
+        api("/api/admin/orders"),
+        api("/api/admin/users"),
+        api("/api/admin/courses"),
+      ]);
+      document.getElementById("stats").innerHTML = `
+        <div class="stat"><strong>${stats.users}</strong>usuarios</div>
+        <div class="stat"><strong>${stats.courses}</strong>cursos</div>
+        <div class="stat"><strong>${stats.enrollments}</strong>inscripciones</div>
+        <div class="stat"><strong>${money(stats.revenue)}</strong>ingresos</div>`;
+      document.getElementById("orders").innerHTML = `<tr><th>Fecha</th><th>Estado</th><th>Monto</th></tr>` +
+        orders.orders.slice(0, 20).map((o) => `<tr><td>${new Date(o.createdAt).toLocaleString("es-AR")}</td><td>${o.status}</td><td>${money(o.amount)}</td></tr>`).join("");
+      document.getElementById("users").innerHTML = `<tr><th>Nombre</th><th>Email</th><th>Rol</th></tr>` +
+        users.users.map((u) => `<tr><td>${u.name}</td><td>${u.email}</td><td>${u.role}</td></tr>`).join("");
+      document.getElementById("courses").innerHTML = courses.courses.map((c) => `
+        <div style="display:flex;justify-content:space-between;gap:1rem;padding:0.45rem 0;border-bottom:1px solid var(--line)">
+          <div><strong>${c.title}</strong><div class="hint">${c.slug} · ${money(c.price)}</div></div>
+          <button class="btn btn-ghost" data-del="${c.id}" type="button">Borrar</button>
+        </div>`).join("");
+      document.querySelectorAll("[data-del]").forEach((btn) => {
+        btn.onclick = async () => {
+          if (!confirm("¿Borrar curso?")) return;
+          await api("/api/admin/courses/" + btn.dataset.del, { method: "DELETE" });
+          load();
+        };
+      });
+    }
+
+    document.getElementById("form").onsubmit = async (e) => {
+      e.preventDefault();
+      const fd = new FormData(e.target);
+      try {
+        await api("/api/admin/courses", {
+          method: "POST",
+          body: JSON.stringify({
+            title: fd.get("title"),
+            slug: fd.get("slug"),
+            price: Number(fd.get("price")),
+            description: fd.get("description"),
+            modules: [],
+          }),
+        });
+        e.target.reset();
+        load();
+      } catch (err) {
+        document.getElementById("err").textContent = err.message;
+      }
+    };
+
+    load().catch(() => location.href = "/login.html");
+  </script>
+</body>
+</html>

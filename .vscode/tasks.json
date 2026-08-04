@@ -2,35 +2,17 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "NEXA: setup",
+      "label": "npm: install",
       "type": "shell",
-      "command": "npm run solution:setup",
-      "problemMatcher": [],
-      "presentation": {
-        "reveal": "always",
-        "panel": "shared"
-      }
-    },
-    {
-      "label": "NEXA: iniciar web (dev)",
-      "type": "shell",
-      "command": "npm run solution:start",
-      "problemMatcher": [],
-      "isBackground": true,
-      "presentation": {
-        "reveal": "always",
-        "panel": "dedicated"
-      },
-      "group": {
-        "kind": "build",
-        "isDefault": true
-      }
-    },
-    {
-      "label": "NEXA: seed demo",
-      "type": "shell",
-      "command": "npm run seed",
+      "command": "npm install",
       "problemMatcher": []
+    },
+    {
+      "label": "npm: dev",
+      "type": "shell",
+      "command": "npm run dev",
+      "problemMatcher": [],
+      "isBackground": true
     }
   ]
 }

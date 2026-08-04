@@ -2,24 +2,10 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "type": "chrome",
-      "request": "launch",
-      "name": "NEXA Web · Chrome",
-      "url": "http://localhost:3000",
-      "webRoot": "${workspaceFolder}"
-    },
-    {
-      "type": "msedge",
-      "request": "launch",
-      "name": "NEXA Web · Edge",
-      "url": "http://localhost:3000",
-      "webRoot": "${workspaceFolder}"
-    },
-    {
-      "name": "NEXA Web (proyecto de inicio)",
+      "name": "NEXA Web",
       "type": "node-terminal",
       "request": "launch",
-      "command": "npm run solution:start",
+      "command": "npm run dev",
       "cwd": "${workspaceFolder}"
     }
   ]

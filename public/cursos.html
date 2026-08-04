@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Cursos · NEXA</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <header class="site-header" id="site-header"></header>
+  <main class="section">
+    <div class="wrap">
+      <h2>Cursos y certificaciones</h2>
+      <p class="lead">Elegí un programa y pagá para desbloquear el aula.</p>
+      <div class="course-list" id="list"></div>
+    </div>
+  </main>
+  <script src="/js/common.js"></script>
+  <script>
+    (async () => {
+      const { courses } = await api("/api/courses");
+      document.getElementById("list").innerHTML = courses.map((c) => `
+        <a class="course-row" href="/curso.html?slug=${c.slug}">
+          <span class="bar" style="background:${c.thumbnailGradient}"></span>
+          <div>
+            <h3>${c.title}</h3>
+            <p>${c.subtitle}</p>
+            <div class="meta">${c.category} · ${c.level} · certificado incluido</div>
+          </div>
+          <div class="price">${money(c.price, c.currency)}</div>
+        </a>`).join("");
+    })();
+  </script>
+</body>
+</html>

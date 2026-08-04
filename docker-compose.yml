@@ -1,9 +1,6 @@
 services:
   nexa:
-    build:
-      context: .
-      args:
-        NEXT_PUBLIC_MP_PUBLIC_KEY: ${NEXT_PUBLIC_MP_PUBLIC_KEY:-}
+    build: .
     container_name: nexa-cursos
     ports:
       - "${PORT:-3000}:3000"
@@ -12,9 +9,8 @@ services:
       - APP_URL=${APP_URL:-http://localhost:3000}
       - AUTH_SECRET=${AUTH_SECRET:-cambia-este-secreto-de-sesion}
       - STREAM_SECRET=${STREAM_SECRET:-cambia-este-secreto-de-stream}
-      - NEXT_PUBLIC_MP_PUBLIC_KEY=${NEXT_PUBLIC_MP_PUBLIC_KEY:-}
+      - MP_PUBLIC_KEY=${MP_PUBLIC_KEY:-}
       - MP_ACCESS_TOKEN=${MP_ACCESS_TOKEN:-}
-      - MP_WEBHOOK_URL=${MP_WEBHOOK_URL:-}
       - MP_ALLOW_SIMULATE=${MP_ALLOW_SIMULATE:-true}
     volumes:
       - nexa_data:/app/data

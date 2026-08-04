@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Curso · NEXA</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <header class="site-header" id="site-header"></header>
+  <main class="section">
+    <div class="wrap grid-2">
+      <div>
+        <p class="hint" id="meta"></p>
+        <h2 id="title"></h2>
+        <p class="lead" id="subtitle"></p>
+        <p id="description"></p>
+        <ul id="outcomes"></ul>
+      </div>
+      <aside class="panel">
+        <div class="price" id="price" style="font-size:1.4rem;margin-bottom:0.8rem"></div>
+        <p class="hint" id="instructor"></p>
+        <div id="action" style="margin-top:1rem"></div>
+        <div id="modules" style="margin-top:1.2rem"></div>
+      </aside>
+    </div>
+  </main>
+  <script src="/js/common.js"></script>
+  <script>
+    (async () => {
+      const slug = qs("slug");
+      const data = await api("/api/courses/" + encodeURIComponent(slug));
+      const c = data.course;
+      document.title = c.title + " · NEXA";
+      document.getElementById("meta").textContent = `${c.category} · ${c.level} · ${c.durationHours} h`;
+      document.getElementById("title").textContent = c.title;
+      document.getElementById("subtitle").textContent = c.subtitle;
+      document.getElementById("description").textContent = c.description;
+      document.getElementById("price").textContent = data.priceLabel;
+      document.getElementById("instructor").textContent = "Instructor: " + c.instructor;
+      document.getElementById("outcomes").innerHTML = c.learningOutcomes.map((o) => `<li>${o}</li>`).join("");
+      document.getElementById("modules").innerHTML = c.modules.map((m) => `
+        <div style="margin-bottom:0.8rem">
+          <strong>${m.title}</strong>
+          <div class="hint">${m.lessons.map((l) => l.title).join(" · ")}</div>
+        </div>`).join("");
+      const action = document.getElementById("action");
+      if (data.enrolled) {
+        action.innerHTML = `<a class="btn btn-primary" href="/aprender.html?slug=${c.slug}">Ir al aula</a>
+          ${data.enrollment?.certificateCode ? `<a class="btn btn-ghost" href="/certificado.html?slug=${c.slug}">Ver certificado</a>` : ""}`;
+      } else {
+        action.innerHTML = `<a class="btn btn-accent" href="/checkout.html?slug=${c.slug}">Comprar</a>`;
+      }
+    })();
+  </script>
+</body>
+</html>

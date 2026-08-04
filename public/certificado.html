@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Certificado · NEXA</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <header class="site-header" id="site-header"></header>
+  <main class="section"><div class="wrap">
+    <div class="panel" style="max-width:720px;margin:0 auto;text-align:center;padding:2.5rem 1.5rem">
+      <div class="brand" style="font-size:2rem">NEXA</div>
+      <p class="hint">Certifica que</p>
+      <h2 id="name" style="margin:0.2rem 0 0.8rem"></h2>
+      <p>completó el programa</p>
+      <h3 id="course" style="font-family:Fraunces,serif;font-size:1.6rem"></h3>
+      <p class="hint" id="code"></p>
+      <p class="hint" id="date"></p>
+    </div>
+  </div></main>
+  <script src="/js/common.js"></script>
+  <script>
+    (async () => {
+      const slug = qs("slug");
+      try {
+        const data = await api("/api/certificate/" + encodeURIComponent(slug));
+        document.getElementById("name").textContent = data.studentName;
+        document.getElementById("course").textContent = data.course.certificateName;
+        document.getElementById("code").textContent = "Código: " + data.certificateCode;
+        document.getElementById("date").textContent = "Emitido: " + new Date(data.issuedAt).toLocaleDateString("es-AR");
+      } catch {
+        location.href = "/aprender.html?slug=" + slug;
+      }
+    })();
+  </script>
+</body>
+</html>

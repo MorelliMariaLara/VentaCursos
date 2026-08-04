@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Mis cursos · NEXA</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <header class="site-header" id="site-header"></header>
+  <main class="section"><div class="wrap">
+    <h2>Mis cursos</h2>
+    <p class="lead">Tu biblioteca de programas comprados.</p>
+    <div class="course-list" id="list"></div>
+  </div></main>
+  <script src="/js/common.js"></script>
+  <script>
+    (async () => {
+      try {
+        const { items } = await api("/api/my-courses");
+        if (!items.length) {
+          document.getElementById("list").innerHTML = `<p class="hint">Todavía no compraste. <a href="/cursos.html">Ver catálogo</a></p>`;
+          return;
+        }
+        document.getElementById("list").innerHTML = items.map(({ course: c, enrollment: e }) => `
+          <a class="course-row" href="/aprender.html?slug=${c.slug}">
+            <span class="bar" style="background:${c.thumbnailGradient}"></span>
+            <div>
+              <h3>${c.title}</h3>
+              <p>${c.subtitle}</p>
+              <div class="meta">${e.certificateCode ? "Certificado listo" : "En progreso"}</div>
+            </div>
+            <div class="price">Abrir</div>
+          </a>`).join("");
+      } catch {
+        location.href = "/login.html";
+      }
+    })();
+  </script>
+</body>
+</html>
