@@ -5,14 +5,16 @@ Este repo **es el proyecto web** para vender cursos, cobrar con Mercado Pago, em
 > Guía de arranque: **[INICIO.md](./INICIO.md)**
 
 **Visual Studio 2022:** abrí **`NEXA.sln`** → clic derecho en **`Nexa.Web`** → *Set as Startup Project* → **F5**  
-**Cursor/VS Code:** abrí **`NEXA.code-workspace`**  
-**Windows rápido:** ejecutá **`iniciar.bat`**
+**Windows rápido:** ejecutá **`iniciar.bat`**  
+**Guía / errores de npm:** **[INICIO.md](./INICIO.md)**
 
-```bash
-npm install
-npm run solution:start
+```powershell
+npm install --legacy-peer-deps
+npm run dev
 # → http://localhost:3000
 ```
+
+Requiere **Node.js 20+**.
 
 ---
 

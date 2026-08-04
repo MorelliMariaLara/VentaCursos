@@ -2,18 +2,22 @@
   "name": "nexa-web",
   "version": "1.0.0",
   "private": true,
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --port 3000",
     "build": "next build",
-    "start": "next start",
+    "start": "next start --port 3000",
     "lint": "eslint",
     "seed": "tsx scripts/seed.ts",
-    "solution:setup": "bash scripts/setup.sh",
-    "solution:start": "bash scripts/start.sh dev",
-    "solution:up": "bash scripts/start.sh docker",
-    "solution:down": "bash scripts/start.sh down",
-    "solution:logs": "bash scripts/start.sh logs",
-    "inicio": "bash iniciar.sh"
+    "setup": "node scripts/setup.mjs",
+    "solution:setup": "node scripts/setup.mjs",
+    "solution:start": "next dev --port 3000",
+    "solution:up": "docker compose up --build -d",
+    "solution:down": "docker compose down",
+    "solution:logs": "docker compose logs -f nexa",
+    "inicio": "node scripts/setup.mjs && next dev --port 3000"
   },
   "dependencies": {
     "@mercadopago/sdk-react": "^1.0.7",
