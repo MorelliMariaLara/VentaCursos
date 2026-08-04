@@ -1,21 +1,20 @@
-# Cómo iniciar NEXA (simple)
+# Cómo iniciar NEXA
 
-Solo necesitás **Node.js 20+**.
+**No hace falta `npm install`.** Solo Node.js 20+.
 
-## PowerShell (Windows)
+## PowerShell
 
 ```powershell
 cd "C:\Users\Maria Lara\source\repos\VentaCursos"
 git pull origin main
-npm install
-npm run dev
+node server/index.js
 ```
 
 Abrí http://localhost:3000
 
 O doble clic en **`iniciar.bat`**.
 
-## Cuentas demo
+## Cuentas
 
 | Rol | Email | Contraseña |
 | --- | --- | --- |
@@ -24,10 +23,4 @@ O doble clic en **`iniciar.bat`**.
 
 ## Visual Studio
 
-1. Abrí `NEXA.sln`
-2. Set as Startup Project → `Nexa.Web`
-3. F5
-
-## Dependencias
-
-Solo 2 paquetes: `express` y `bcryptjs`.
+Abrí `NEXA.sln` → Startup Project `Nexa.Web` → F5.

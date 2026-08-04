@@ -1,8 +1,8 @@
 <Project Sdk="Microsoft.VisualStudio.JavaScript.Sdk/1.0.2191419">
   <PropertyGroup>
-    <StartupCommand>npm run dev</StartupCommand>
-    <ShouldRunNpmInstall>true</ShouldRunNpmInstall>
-    <BuildCommand>echo build-not-required</BuildCommand>
-    <ProductionBuildCommand>echo build-not-required</ProductionBuildCommand>
+    <StartupCommand>node server/index.js</StartupCommand>
+    <ShouldRunNpmInstall>false</ShouldRunNpmInstall>
+    <BuildCommand>echo ok</BuildCommand>
+    <ProductionBuildCommand>echo ok</ProductionBuildCommand>
   </PropertyGroup>
 </Project>

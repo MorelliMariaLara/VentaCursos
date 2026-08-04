@@ -2,15 +2,9 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "npm: install",
+      "label": "NEXA: start",
       "type": "shell",
-      "command": "npm install",
-      "problemMatcher": []
-    },
-    {
-      "label": "npm: dev",
-      "type": "shell",
-      "command": "npm run dev",
+      "command": "node server/index.js",
       "problemMatcher": [],
       "isBackground": true
     }

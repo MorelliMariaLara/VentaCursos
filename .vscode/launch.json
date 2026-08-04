@@ -5,7 +5,7 @@
       "name": "NEXA Web",
       "type": "node-terminal",
       "request": "launch",
-      "command": "npm run dev",
+      "command": "node server/index.js",
       "cwd": "${workspaceFolder}"
     }
   ]

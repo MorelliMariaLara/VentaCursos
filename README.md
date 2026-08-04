@@ -1,51 +1,28 @@
-# NEXA — venta de cursos (simple)
+# NEXA — venta de cursos (sin paquetes npm)
 
-Plataforma web liviana para vender cursos con:
+Plataforma local simple:
 
 - Catálogo y checkout
-- Mercado Pago (o pago simulado en local)
-- Aula con video cifrado (AES)
+- Pago simulado (o Mercado Pago si configurás `.env`)
+- Aula con video cifrado
 - Certificados
-- Panel admin
+- Admin
 
-## Stack
+## Requisitos
 
-- **Node.js + Express**
-- **HTML / CSS / JS** (sin React, sin Next, sin Tailwind)
-- Base de datos en archivo: `data/store.json`
-- Videos en `content/videos/` (no públicos)
-
-Dependencias npm: **`express`** + **`bcryptjs`**.
+Solo **Node.js 20+**.  
+**Cero dependencias npm** (`express`, `bcrypt`, etc. no se usan).
 
 ## Arranque
 
-```bash
-npm install
-npm run dev
+```powershell
+git pull origin main
+node server/index.js
 ```
 
 http://localhost:3000
-
-### Windows
-
-```powershell
-git pull origin main
-npm install
-npm run dev
-```
 
 ## Cuentas
 
 - Alumno: `demo@nexa.academy` / `demo1234`
 - Admin: `admin@nexa.academy` / `admin1234`
-
-## Mercado Pago (opcional)
-
-Copiá `.env.example` a `.env` y completá:
-
-```
-MP_PUBLIC_KEY=...
-MP_ACCESS_TOKEN=...
-```
-
-Sin credenciales, el checkout ofrece **Simular pago**.

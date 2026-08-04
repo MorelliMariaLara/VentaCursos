@@ -1,8 +1,8 @@
 {
   "name": "nexa-web",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "private": true,
-  "description": "NEXA — venta de cursos simple (Express + HTML)",
+  "description": "NEXA — venta de cursos sin dependencias npm (solo Node.js)",
   "engines": {
     "node": ">=20"
   },
@@ -10,9 +10,5 @@
     "dev": "node server/index.js",
     "start": "node server/index.js",
     "inicio": "node server/index.js"
-  },
-  "dependencies": {
-    "bcryptjs": "^3.0.3",
-    "express": "^5.1.0"
   }
 }

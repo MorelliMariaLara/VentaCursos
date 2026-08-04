@@ -1,8 +1,8 @@
 const fs = require("fs/promises");
 const path = require("path");
 const { randomUUID } = require("crypto");
-const bcrypt = require("bcryptjs");
 const { COURSES, findLesson } = require("./courses");
+const { hashPassword } = require("./password");
 
 const DATA_DIR = path.join(process.cwd(), "data");
 const DB_PATH = path.join(DATA_DIR, "store.json");
@@ -12,49 +12,60 @@ async function writeDb(db) {
   await fs.writeFile(DB_PATH, JSON.stringify(db, null, 2), "utf8");
 }
 
+async function demoUsers() {
+  return [
+    {
+      id: "user-demo",
+      name: "Estudiante Demo",
+      email: "demo@nexa.academy",
+      passwordHash: await hashPassword("demo1234"),
+      role: "student",
+      createdAt: new Date().toISOString(),
+    },
+    {
+      id: "user-admin",
+      name: "Admin NEXA",
+      email: "admin@nexa.academy",
+      passwordHash: await hashPassword("admin1234"),
+      role: "admin",
+      createdAt: new Date().toISOString(),
+    },
+  ];
+}
+
 async function ensureDb() {
   await fs.mkdir(DATA_DIR, { recursive: true });
   try {
     const raw = await fs.readFile(DB_PATH, "utf8");
     const db = JSON.parse(raw);
     let dirty = false;
-    if (!db.courses?.length) {
+
+    if (!Array.isArray(db.users)) db.users = [];
+    if (!Array.isArray(db.courses)) db.courses = [];
+    if (!Array.isArray(db.enrollments)) db.enrollments = [];
+    if (!Array.isArray(db.orders)) db.orders = [];
+
+    if (!db.courses.length) {
       db.courses = COURSES.map((c) => ({ ...c, published: c.published ?? true }));
       dirty = true;
     }
-    if (!db.users.some((u) => u.role === "admin")) {
-      db.users.push({
-        id: "user-admin",
-        name: "Admin NEXA",
-        email: "admin@nexa.academy",
-        passwordHash: await bcrypt.hash("admin1234", 10),
-        role: "admin",
-        createdAt: new Date().toISOString(),
-      });
+
+    // Si hay hashes viejos (bcrypt) o faltan demos, regeneramos cuentas demo
+    const needsReseed = !db.users.some((u) => u.email === "demo@nexa.academy" && String(u.passwordHash || "").startsWith("scrypt$"));
+    if (needsReseed || !db.users.some((u) => u.role === "admin")) {
+      const demos = await demoUsers();
+      db.users = db.users.filter(
+        (u) => u.email !== "demo@nexa.academy" && u.email !== "admin@nexa.academy",
+      );
+      db.users.push(...demos);
       dirty = true;
     }
+
     if (dirty) await writeDb(db);
     return db;
   } catch {
     const seed = {
-      users: [
-        {
-          id: "user-demo",
-          name: "Estudiante Demo",
-          email: "demo@nexa.academy",
-          passwordHash: await bcrypt.hash("demo1234", 10),
-          role: "student",
-          createdAt: new Date().toISOString(),
-        },
-        {
-          id: "user-admin",
-          name: "Admin NEXA",
-          email: "admin@nexa.academy",
-          passwordHash: await bcrypt.hash("admin1234", 10),
-          role: "admin",
-          createdAt: new Date().toISOString(),
-        },
-      ],
+      users: await demoUsers(),
       courses: COURSES.map((c) => ({ ...c, published: true })),
       enrollments: [],
       orders: [],
@@ -62,10 +73,6 @@ async function ensureDb() {
     await writeDb(seed);
     return seed;
   }
-}
-
-async function getDb() {
-  return ensureDb();
 }
 
 async function listCourses(includeUnpublished = false) {
@@ -107,7 +114,7 @@ async function createUser({ name, email, password, role = "student" }) {
     id: randomUUID(),
     name,
     email: email.toLowerCase(),
-    passwordHash: await bcrypt.hash(password, 10),
+    passwordHash: await hashPassword(password),
     role,
     createdAt: new Date().toISOString(),
   };
@@ -268,7 +275,6 @@ async function stats() {
 }
 
 module.exports = {
-  getDb,
   listCourses,
   getCourseBySlug,
   getCourseById,

@@ -1,23 +1,14 @@
-# Solución NEXA (empaquetada)
+# Solución NEXA
 
-## Qué incluye
+Sin `npm install`. Arranca con Node nativo.
 
-| Pieza | Archivo / carpeta |
-| --- | --- |
-| Servidor | `server/` |
-| Frontend | `public/` |
-| Datos | `data/store.json` |
-| Videos | `content/videos/` |
-| VS 2022 | `NEXA.sln` + `Nexa.Web.esproj` |
-| Inicio Windows | `iniciar.bat` |
-
-## Comandos
-
-```bash
-npm install
-npm run dev
+```text
+server/   → API + servidor HTTP
+public/   → HTML/CSS/JS
+data/     → store.json
+content/videos/ → videos locales
 ```
 
-## Variables
-
-Ver `.env.example`.
+```bash
+node server/index.js
+```

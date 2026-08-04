@@ -1,8 +1,5 @@
-install:
-	npm install
-
 dev:
-	npm run dev
+	node server/index.js
 
 start:
-	npm start
+	node server/index.js
