@@ -1,0 +1,20 @@
+@model RegisterViewModel
+@{
+    ViewData["Title"] = "Registro";
+}
+<section class="section">
+    <div class="wrap">
+        <h2>Crear cuenta</h2>
+        <form class="form panel" asp-action="Register" method="post">
+            @Html.AntiForgeryToken()
+            <label>Nombre <input asp-for="Name" required /></label>
+            <label>Email <input asp-for="Email" type="email" required /></label>
+            <label>Contraseña <input asp-for="Password" type="password" minlength="6" required /></label>
+            <button class="btn btn-primary" type="submit">Crear cuenta</button>
+            @if (!string.IsNullOrEmpty(Model.Error))
+            {
+                <p class="error">@Model.Error</p>
+            }
+        </form>
+    </div>
+</section>

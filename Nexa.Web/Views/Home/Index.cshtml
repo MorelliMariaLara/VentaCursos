@@ -1,0 +1,35 @@
+@model List<PublicCourse>
+@{
+    ViewData["Title"] = "Cursos y certificaciones";
+}
+<section class="hero">
+    <div class="wrap hero-copy">
+        <p class="brand-mark">NEXA</p>
+        <h1>Cursos con video protegido y certificación.</h1>
+        <p>Comprá, aprendé en el aula cifrada y obtené tu certificado. Pagos con Mercado Pago o simulación en local.</p>
+        <div class="cta-row">
+            <a class="btn btn-accent" asp-controller="Courses" asp-action="Index">Ver cursos</a>
+            <a class="btn btn-ghost" asp-controller="Account" asp-action="Login">Ingresar</a>
+        </div>
+    </div>
+</section>
+<section class="section">
+    <div class="wrap">
+        <h2>Catálogo</h2>
+        <p class="lead">Tres programas listos para demo. El video viaja cifrado al navegador.</p>
+        <div class="course-list">
+            @foreach (var c in Model)
+            {
+                <a class="course-row" asp-controller="Courses" asp-action="Details" asp-route-slug="@c.Slug">
+                    <span class="bar" style="background:@c.ThumbnailGradient"></span>
+                    <div>
+                        <h3>@c.Title</h3>
+                        <p>@c.Subtitle</p>
+                        <div class="meta">@c.Level · @c.DurationHours h · @c.Instructor</div>
+                    </div>
+                    <div class="price">@MoneyFormat.Ars(c.Price)</div>
+                </a>
+            }
+        </div>
+    </div>
+</section>
