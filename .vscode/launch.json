@@ -1,0 +1,19 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "NEXA Web (proyecto de inicio)",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "npm run solution:start",
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "name": "NEXA Web · solo servidor",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "npm run dev",
+      "cwd": "${workspaceFolder}"
+    }
+  ]
+}
