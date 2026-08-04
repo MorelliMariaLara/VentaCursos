@@ -1,0 +1,153 @@
+@model AdminCourseEditViewModel
+@using Nexa.Web.Services
+@{
+    ViewData["Title"] = "Contenido del curso";
+    var c = Model.Course;
+}
+<section class="section">
+    <div class="wrap">
+        <p class="hint"><a asp-action="Index">← Volver al admin</a></p>
+        <h2>@c.Title</h2>
+        <p class="lead">Cargá módulos y lecciones. El alumno solo ve el video después de pagar.</p>
+        <p class="hint">Slug: <code>@c.Slug</code> · Precio: @MoneyFormat.Ars(c.Price)</p>
+
+        @if (!string.IsNullOrEmpty(Model.Error))
+        {
+            <p class="error">@Model.Error</p>
+        }
+        @if (!string.IsNullOrEmpty(Model.Message))
+        {
+            <p class="ok">@Model.Message</p>
+        }
+
+        <div class="panel" style="margin-top:1rem">
+            <h3 style="margin-top:0">Agregar módulo</h3>
+            <form class="form" asp-action="AddModule" method="post" style="max-width:none;display:flex;gap:0.8rem;flex-wrap:wrap;align-items:end">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="CourseId" value="@c.Id" />
+                <label style="flex:1;min-width:220px">Título del módulo
+                    <input name="Title" value="Módulo @(c.Modules.Count + 1)" required />
+                </label>
+                <button class="btn btn-primary" type="submit">Agregar módulo</button>
+            </form>
+        </div>
+
+        @foreach (var mod in c.Modules)
+        {
+            <div class="panel" style="margin-top:1rem">
+                <div style="display:flex;justify-content:space-between;gap:1rem;align-items:center;flex-wrap:wrap">
+                    <h3 style="margin:0">@mod.Title</h3>
+                    <form asp-action="DeleteModule" method="post" onsubmit="return confirm('¿Borrar módulo y sus lecciones?')">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="courseId" value="@c.Id" />
+                        <input type="hidden" name="moduleId" value="@mod.Id" />
+                        <button class="btn btn-ghost" type="submit">Borrar módulo</button>
+                    </form>
+                </div>
+
+                @if (mod.Lessons.Count == 0)
+                {
+                    <p class="hint">Todavía no hay lecciones en este módulo.</p>
+                }
+
+                @foreach (var les in mod.Lessons.OrderBy(l => l.Order))
+                {
+                    var kind = VideoSources.Kind(les.SourceUrl);
+                    var sourceLabel = kind switch
+                    {
+                        "youtube" => "YouTube · " + (VideoSources.YouTubeId(les.SourceUrl) ?? ""),
+                        "local" => "Archivo · " + (VideoSources.LocalFileName(les.SourceUrl) ?? ""),
+                        _ => "Sin video",
+                    };
+                    <div style="border-top:1px solid var(--line);margin-top:1rem;padding-top:1rem">
+                        <strong>@les.Title</strong>
+                        <div class="hint">@les.DurationMinutes min · @sourceLabel</div>
+
+                        <form class="form" asp-action="UpdateLesson" method="post" enctype="multipart/form-data"
+                              style="max-width:none;margin-top:0.6rem">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="courseId" value="@c.Id" />
+                            <input type="hidden" name="lessonId" value="@les.Id" />
+                            <div class="grid-2">
+                                <label>Título <input name="title" value="@les.Title" required /></label>
+                                <label>Duración (min) <input name="durationMinutes" type="number" min="1" value="@les.DurationMinutes" required /></label>
+                            </div>
+                            <label>Cambiar fuente
+                                <select name="sourceType" class="source-type">
+                                    <option value="keep" selected>Mantener actual</option>
+                                    <option value="youtube">Nuevo link YouTube</option>
+                                    <option value="upload">Subir nuevo archivo</option>
+                                </select>
+                            </label>
+                            <label class="yt-field" style="display:none">Link YouTube
+                                <input name="youtubeUrl" placeholder="https://www.youtube.com/watch?v=... o youtu.be/..." />
+                            </label>
+                            <label class="up-field" style="display:none">Archivo video
+                                <input name="videoFile" type="file" accept="video/mp4,video/webm,video/quicktime,.mp4,.webm,.mov" />
+                            </label>
+                            <div class="cta-row" style="margin-top:0.6rem">
+                                <button class="btn btn-primary" type="submit">Guardar lección</button>
+                            </div>
+                        </form>
+                        <form asp-action="DeleteLesson" method="post" style="margin-top:0.4rem"
+                              onsubmit="return confirm('¿Borrar esta lección?')">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="courseId" value="@c.Id" />
+                            <input type="hidden" name="lessonId" value="@les.Id" />
+                            <button class="btn btn-ghost" type="submit">Eliminar lección</button>
+                        </form>
+                    </div>
+                }
+
+                <hr style="border:0;border-top:1px solid var(--line);margin:1.2rem 0" />
+                <h4 style="margin:0 0 0.6rem">Nueva lección en este módulo</h4>
+                <form class="form lesson-create" asp-action="AddLesson" method="post" enctype="multipart/form-data" style="max-width:none">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="CourseId" value="@c.Id" />
+                    <input type="hidden" name="ModuleId" value="@mod.Id" />
+                    <div class="grid-2">
+                        <label>Título <input name="Title" required placeholder="Ej: Introducción al arma" /></label>
+                        <label>Duración (min) <input name="DurationMinutes" type="number" min="1" value="10" required /></label>
+                    </div>
+                    <label>Tipo de video
+                        <select name="SourceType" class="source-type">
+                            <option value="youtube" selected>Link de YouTube (privado / no listado)</option>
+                            <option value="upload">Subir archivo MP4</option>
+                        </select>
+                    </label>
+                    <label class="yt-field">Link YouTube
+                        <input name="YoutubeUrl" placeholder="https://youtu.be/XXXXXXXXXXX o watch?v=..." />
+                    </label>
+                    <label class="up-field" style="display:none">Archivo video (máx. 500 MB)
+                        <input name="videoFile" type="file" accept="video/mp4,video/webm,video/quicktime,.mp4,.webm,.mov" />
+                    </label>
+                    <p class="hint">YouTube privado/no listado: el alumno solo recibe el embed después de pagar (la URL no se muestra en el catálogo).</p>
+                    <button class="btn btn-primary" type="submit">Agregar lección</button>
+                </form>
+            </div>
+        }
+
+        @if (c.Modules.Count == 0)
+        {
+            <p class="hint" style="margin-top:1rem">Primero agregá un módulo, después las lecciones con video.</p>
+        }
+    </div>
+</section>
+@section Scripts {
+<script>
+  function syncSourceFields(root) {
+    const sel = root.querySelector(".source-type");
+    if (!sel) return;
+    const yt = root.querySelector(".yt-field");
+    const up = root.querySelector(".up-field");
+    const apply = () => {
+      const v = sel.value;
+      if (yt) yt.style.display = (v === "youtube") ? "" : "none";
+      if (up) up.style.display = (v === "upload") ? "" : "none";
+    };
+    sel.addEventListener("change", apply);
+    apply();
+  }
+  document.querySelectorAll("form.form, form.lesson-create").forEach(syncSourceFields);
+</script>
+}

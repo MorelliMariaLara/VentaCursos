@@ -112,21 +112,44 @@ public class StreamService
         return Convert.ToHexString(bytes)[..12].ToUpperInvariant();
     }
 
-    public async Task<VideoSource> ReadVideoSourceAsync(string sourceUrl, string? rangeHeader)
+    public string GetVideoRoot()
     {
-        if (!sourceUrl.StartsWith("local:", StringComparison.Ordinal))
-            throw new InvalidOperationException("ONLY_LOCAL_SUPPORTED");
-
-        var fileName = sourceUrl["local:".Length..];
-        if (string.IsNullOrEmpty(fileName) || fileName.Contains("..") || fileName.Contains('/') || fileName.Contains('\\'))
-            throw new InvalidOperationException("INVALID_LOCAL_SOURCE");
-
         var solutionRoot = Directory.GetParent(_env.ContentRootPath)?.FullName ?? _env.ContentRootPath;
         var configured = _config["VideoPath"];
         var videoRoot = !string.IsNullOrWhiteSpace(configured)
-            ? Path.GetFullPath(Path.Combine(_env.ContentRootPath, configured))
+            ? Path.GetFullPath(Path.IsPathRooted(configured) ? configured : Path.Combine(_env.ContentRootPath, configured))
             : Path.Combine(solutionRoot, "content", "videos");
+        Directory.CreateDirectory(videoRoot);
+        return videoRoot;
+    }
 
+    public async Task<string> SaveUploadedVideoAsync(IFormFile file)
+    {
+        if (file == null || file.Length == 0)
+            throw new InvalidOperationException("Archivo vacío.");
+        if (file.Length > 500L * 1024 * 1024)
+            throw new InvalidOperationException("El video no puede superar 500 MB.");
+
+        var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
+        if (ext is not (".mp4" or ".webm" or ".mov"))
+            throw new InvalidOperationException("Solo se permiten .mp4, .webm o .mov.");
+
+        var safeName = $"{DateTime.UtcNow:yyyyMMddHHmmss}-{Guid.NewGuid():N}{ext}";
+        var full = Path.Combine(GetVideoRoot(), safeName);
+        await using (var fs = File.Create(full))
+            await file.CopyToAsync(fs);
+
+        return VideoSources.LocalPrefix + safeName;
+    }
+
+    public async Task<VideoSource> ReadVideoSourceAsync(string sourceUrl, string? rangeHeader)
+    {
+        var fileName = VideoSources.LocalFileName(sourceUrl)
+            ?? throw new InvalidOperationException("ONLY_LOCAL_SUPPORTED");
+        if (string.IsNullOrEmpty(fileName) || fileName.Contains("..") || fileName.Contains('/') || fileName.Contains('\\'))
+            throw new InvalidOperationException("INVALID_LOCAL_SOURCE");
+
+        var videoRoot = GetVideoRoot();
         var full = Path.Combine(videoRoot, fileName);
         var file = await File.ReadAllBytesAsync(full);
         var totalSize = file.Length;

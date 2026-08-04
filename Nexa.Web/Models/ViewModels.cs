@@ -84,3 +84,27 @@ public class AdminDashboardViewModel
     public string? Error { get; set; }
     public string? Message { get; set; }
 }
+
+public class AdminCourseEditViewModel
+{
+    public Course Course { get; set; } = new();
+    public string? Error { get; set; }
+    public string? Message { get; set; }
+}
+
+public class AdminModuleForm
+{
+    [Required] public string CourseId { get; set; } = "";
+    [Required] public string Title { get; set; } = "Módulo 1";
+}
+
+public class AdminLessonForm
+{
+    [Required] public string CourseId { get; set; } = "";
+    [Required] public string ModuleId { get; set; } = "";
+    [Required] public string Title { get; set; } = "";
+    public int DurationMinutes { get; set; } = 10;
+    /// <summary>youtube | upload</summary>
+    [Required] public string SourceType { get; set; } = "youtube";
+    public string? YoutubeUrl { get; set; }
+}

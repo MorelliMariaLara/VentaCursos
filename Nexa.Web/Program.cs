@@ -1,9 +1,18 @@
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.EntityFrameworkCore;
 using Nexa.Web.Data;
 using Nexa.Web.Services;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Subida de videos desde Admin (hasta ~500 MB)
+builder.WebHost.ConfigureKestrel(o => o.Limits.MaxRequestBodySize = 520_000_000);
+builder.Services.Configure<FormOptions>(o =>
+{
+    o.MultipartBodyLengthLimit = 520_000_000;
+    o.ValueLengthLimit = int.MaxValue;
+});
 
 LoadEnvFiles(builder);
 RepairBrokenMercadoPagoCredentials(builder);

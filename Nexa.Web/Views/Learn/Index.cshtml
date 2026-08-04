@@ -10,7 +10,10 @@
             <h2>@c.Title</h2>
             <p class="lead" id="lessonTitle">Elegí una lección</p>
             <div class="player-shell">
-                <video id="video" controls controlsList="nodownload" disablePictureInPicture playsinline></video>
+                <video id="video" controls controlsList="nodownload" disablePictureInPicture playsinline style="display:none"></video>
+                <iframe id="ytFrame" title="YouTube" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowfullscreen referrerpolicy="strict-origin-when-cross-origin"
+                        style="display:none;width:100%;aspect-ratio:16/9;border:0;background:#000"></iframe>
                 <div class="watermark" id="wm"></div>
             </div>
             <button class="btn btn-primary" id="completeBtn" type="button" style="margin-top:0.8rem" disabled>Marcar lección completa</button>
@@ -48,8 +51,26 @@
   const slug = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(c.Slug));
   let currentLesson = null;
   let progress = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(progress));
+  const videoEl = document.getElementById("video");
+  const ytFrame = document.getElementById("ytFrame");
 
   document.addEventListener("contextmenu", (e) => e.preventDefault());
+
+  function showLocal() {
+    videoEl.style.display = "block";
+    ytFrame.style.display = "none";
+    ytFrame.src = "";
+  }
+  function showYoutube(url) {
+    if (videoEl.dataset.objectUrl) {
+      URL.revokeObjectURL(videoEl.dataset.objectUrl);
+      delete videoEl.dataset.objectUrl;
+    }
+    videoEl.removeAttribute("src");
+    videoEl.style.display = "none";
+    ytFrame.style.display = "block";
+    ytFrame.src = url;
+  }
 
   document.querySelectorAll(".lesson-btn").forEach((btn) => {
     btn.onclick = () => playLesson(btn.dataset.id, btn);
@@ -77,7 +98,7 @@
     document.querySelectorAll(".lesson-btn").forEach((b) => b.classList.remove("active"));
     if (btn) btn.classList.add("active");
     document.getElementById("completeBtn").disabled = true;
-    document.getElementById("msg").textContent = "Cargando video cifrado...";
+    document.getElementById("msg").textContent = "Cargando contenido…";
     try {
       const session = await api("/api/stream/session", {
         method: "POST",
@@ -85,7 +106,13 @@
       });
       document.getElementById("lessonTitle").textContent = session.lesson.moduleTitle + " · " + session.lesson.title;
       document.getElementById("wm").textContent = "SANTICAZA · " + session.watermark;
-      await loadEncryptedVideo(document.getElementById("video"), session);
+
+      if (session.kind === "youtube") {
+        showYoutube(session.embedUrl);
+      } else {
+        showLocal();
+        await loadEncryptedVideo(videoEl, session);
+      }
       document.getElementById("completeBtn").disabled = false;
       document.getElementById("msg").textContent = "";
     } catch (e) {

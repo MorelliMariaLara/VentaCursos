@@ -9,10 +9,28 @@ namespace Nexa.Web.Controllers;
 public class AdminController : Controller
 {
     private readonly StoreService _store;
+    private readonly StreamService _stream;
 
-    public AdminController(StoreService store) => _store = store;
+    public AdminController(StoreService store, StreamService stream)
+    {
+        _store = store;
+        _stream = stream;
+    }
 
     public async Task<IActionResult> Index() => View(await BuildDashboardAsync());
+
+    [HttpGet]
+    public async Task<IActionResult> Course(string id, string? message = null, string? error = null)
+    {
+        var course = await _store.GetCourseByIdAsync(id);
+        if (course == null) return NotFound();
+        return View(new AdminCourseEditViewModel
+        {
+            Course = course,
+            Message = message,
+            Error = error,
+        });
+    }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
@@ -28,7 +46,7 @@ public class AdminController : Controller
 
         try
         {
-            await _store.UpsertCourseAsync(new Course
+            var course = await _store.UpsertCourseAsync(new Course
             {
                 Title = form.Title.Trim(),
                 Slug = form.Slug.Trim(),
@@ -37,7 +55,7 @@ public class AdminController : Controller
                 Modules = new(),
                 Published = true,
             });
-            return RedirectToAction(nameof(Index));
+            return RedirectToAction(nameof(Course), new { id = course.Id, message = "Curso creado. Ahora cargá módulos y lecciones." });
         }
         catch (Exception ex)
         {
@@ -55,6 +73,112 @@ public class AdminController : Controller
         try { await _store.DeleteCourseAsync(id); }
         catch { /* ignore */ }
         return RedirectToAction(nameof(Index));
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> AddModule(AdminModuleForm form)
+    {
+        try
+        {
+            await _store.AddModuleAsync(form.CourseId, form.Title);
+            return RedirectToAction(nameof(Course), new { id = form.CourseId, message = "Módulo agregado." });
+        }
+        catch (Exception ex)
+        {
+            return RedirectToAction(nameof(Course), new { id = form.CourseId, error = ex.Message });
+        }
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> DeleteModule(string courseId, string moduleId)
+    {
+        try { await _store.DeleteModuleAsync(moduleId); }
+        catch (Exception ex)
+        {
+            return RedirectToAction(nameof(Course), new { id = courseId, error = ex.Message });
+        }
+        return RedirectToAction(nameof(Course), new { id = courseId, message = "Módulo eliminado." });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [RequestSizeLimit(520_000_000)]
+    [RequestFormLimits(MultipartBodyLengthLimit = 520_000_000)]
+    public async Task<IActionResult> AddLesson(AdminLessonForm form, IFormFile? videoFile)
+    {
+        try
+        {
+            string sourceUrl;
+            if (string.Equals(form.SourceType, "upload", StringComparison.OrdinalIgnoreCase))
+            {
+                if (videoFile == null || videoFile.Length == 0)
+                    throw new InvalidOperationException("Seleccioná un archivo de video.");
+                sourceUrl = await _stream.SaveUploadedVideoAsync(videoFile);
+            }
+            else
+            {
+                if (string.IsNullOrWhiteSpace(form.YoutubeUrl))
+                    throw new InvalidOperationException("Pegá el link de YouTube (puede ser no listado / privado según tu cuenta).");
+                sourceUrl = VideoSources.Normalize(form.YoutubeUrl);
+            }
+
+            await _store.AddLessonAsync(form.ModuleId, form.Title, form.DurationMinutes, sourceUrl);
+            return RedirectToAction(nameof(Course), new { id = form.CourseId, message = "Lección guardada." });
+        }
+        catch (Exception ex)
+        {
+            return RedirectToAction(nameof(Course), new { id = form.CourseId, error = ex.Message });
+        }
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [RequestSizeLimit(520_000_000)]
+    [RequestFormLimits(MultipartBodyLengthLimit = 520_000_000)]
+    public async Task<IActionResult> UpdateLesson(
+        string courseId,
+        string lessonId,
+        string title,
+        int durationMinutes,
+        string sourceType,
+        string? youtubeUrl,
+        IFormFile? videoFile)
+    {
+        try
+        {
+            string? newSource = null;
+            if (string.Equals(sourceType, "upload", StringComparison.OrdinalIgnoreCase) &&
+                videoFile != null && videoFile.Length > 0)
+            {
+                newSource = await _stream.SaveUploadedVideoAsync(videoFile);
+            }
+            else if (string.Equals(sourceType, "youtube", StringComparison.OrdinalIgnoreCase) &&
+                     !string.IsNullOrWhiteSpace(youtubeUrl))
+            {
+                newSource = VideoSources.Normalize(youtubeUrl);
+            }
+
+            await _store.UpdateLessonAsync(lessonId, title, durationMinutes, newSource);
+            return RedirectToAction(nameof(Course), new { id = courseId, message = "Lección actualizada." });
+        }
+        catch (Exception ex)
+        {
+            return RedirectToAction(nameof(Course), new { id = courseId, error = ex.Message });
+        }
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> DeleteLesson(string courseId, string lessonId)
+    {
+        try { await _store.DeleteLessonAsync(lessonId); }
+        catch (Exception ex)
+        {
+            return RedirectToAction(nameof(Course), new { id = courseId, error = ex.Message });
+        }
+        return RedirectToAction(nameof(Course), new { id = courseId, message = "Lección eliminada." });
     }
 
     private async Task<AdminDashboardViewModel> BuildDashboardAsync()

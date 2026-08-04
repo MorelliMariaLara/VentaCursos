@@ -28,15 +28,42 @@ public class StreamApiController : ControllerBase
         var course = await _store.GetCourseBySlugAsync(body.Slug ?? "");
         if (course == null) return NotFound(new { error = "Curso no encontrado" });
         if (await _store.GetEnrollmentAsync(userId, course.Id) == null)
-            return StatusCode(403, new { error = "Sin acceso" });
+            return StatusCode(403, new { error = "Sin acceso. Completá el pago para ver el contenido." });
 
         var found = CourseMapper.FindLesson(course, body.LessonId ?? "");
         if (found == null) return NotFound(new { error = "Lección no encontrada" });
 
+        var lesson = found.Value.Lesson;
+        var kind = VideoSources.Kind(lesson.SourceUrl);
+
+        if (kind == "youtube")
+        {
+            var embed = VideoSources.YouTubeEmbedUrl(lesson.SourceUrl);
+            if (string.IsNullOrEmpty(embed))
+                return BadRequest(new { error = "Link de YouTube inválido en esta lección." });
+
+            return Ok(new
+            {
+                kind = "youtube",
+                embedUrl = embed,
+                watermark = StreamService.WatermarkFingerprint(userId, AuthCookie.Email(User)!),
+                lesson = new
+                {
+                    id = lesson.Id,
+                    title = lesson.Title,
+                    moduleTitle = found.Value.ModuleTitle,
+                },
+            });
+        }
+
+        if (kind != "local")
+            return BadRequest(new { error = "Esta lección no tiene un video configurado." });
+
         var (key, iv) = _stream.GenerateContentKey();
-        var token = _stream.CreateStreamToken(userId, course.Id, found.Value.Lesson.Id, key, iv);
+        var token = _stream.CreateStreamToken(userId, course.Id, lesson.Id, key, iv);
         return Ok(new
         {
+            kind = "local",
             token,
             keyB64 = Convert.ToBase64String(key),
             ivB64 = Convert.ToBase64String(iv),
@@ -44,8 +71,8 @@ public class StreamApiController : ControllerBase
             mediaUrl = $"/api/stream/media?token={Uri.EscapeDataString(token)}",
             lesson = new
             {
-                id = found.Value.Lesson.Id,
-                title = found.Value.Lesson.Title,
+                id = lesson.Id,
+                title = lesson.Title,
                 moduleTitle = found.Value.ModuleTitle,
             },
         });
@@ -60,6 +87,10 @@ public class StreamApiController : ControllerBase
         if (course == null) return NotFound("missing");
         var found = CourseMapper.FindLesson(course, claims.LessonId);
         if (found == null) return NotFound("missing");
+
+        // Solo videos locales pasan por cifrado; YouTube no usa este endpoint
+        if (VideoSources.Kind(found.Value.Lesson.SourceUrl) != "local")
+            return BadRequest("not_local");
 
         try
         {

@@ -54,16 +54,19 @@
             <h3>Cursos</h3>
             @foreach (var c in Model.CourseList)
             {
-                <div style="display:flex;justify-content:space-between;gap:1rem;padding:0.45rem 0;border-bottom:1px solid var(--line)">
+                <div style="display:flex;justify-content:space-between;gap:1rem;padding:0.45rem 0;border-bottom:1px solid var(--line);align-items:center;flex-wrap:wrap">
                     <div>
                         <strong>@c.Title</strong>
-                        <div class="hint">@c.Slug · @MoneyFormat.Ars(c.Price)</div>
+                        <div class="hint">@c.Slug · @MoneyFormat.Ars(c.Price) · @c.Modules.Sum(m => m.Lessons.Count) lecciones</div>
                     </div>
-                    <form asp-action="DeleteCourse" method="post" onsubmit="return confirm('¿Borrar curso?')">
-                        @Html.AntiForgeryToken()
-                        <input type="hidden" name="id" value="@c.Id" />
-                        <button class="btn btn-ghost" type="submit">Borrar</button>
-                    </form>
+                    <div class="cta-row">
+                        <a class="btn btn-primary" asp-action="Course" asp-route-id="@c.Id">Contenido / videos</a>
+                        <form asp-action="DeleteCourse" method="post" onsubmit="return confirm('¿Borrar curso?')" style="display:inline">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="id" value="@c.Id" />
+                            <button class="btn btn-ghost" type="submit">Borrar</button>
+                        </form>
+                    </div>
                 </div>
             }
             <hr style="border:0;border-top:1px solid var(--line);margin:1.2rem 0" />

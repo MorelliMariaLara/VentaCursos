@@ -541,6 +541,81 @@ public class StoreService
         await _db.SaveChangesAsync();
     }
 
+    public async Task<CourseModule> AddModuleAsync(string courseId, string title)
+    {
+        var course = await CoursesQuery().FirstOrDefaultAsync(c => c.Id == courseId)
+            ?? throw new InvalidOperationException("COURSE_NOT_FOUND");
+        var mod = new CourseModuleEntity
+        {
+            Id = Guid.NewGuid().ToString(),
+            CourseId = course.Id,
+            Title = title.Trim(),
+            SortOrder = course.Modules.Count + 1,
+        };
+        _db.CourseModules.Add(mod);
+        await _db.SaveChangesAsync();
+        return new CourseModule { Id = mod.Id, Title = mod.Title, Lessons = new() };
+    }
+
+    public async Task DeleteModuleAsync(string moduleId)
+    {
+        var mod = await _db.CourseModules.Include(m => m.Lessons)
+            .FirstOrDefaultAsync(m => m.Id == moduleId)
+            ?? throw new InvalidOperationException("MODULE_NOT_FOUND");
+        _db.Lessons.RemoveRange(mod.Lessons);
+        _db.CourseModules.Remove(mod);
+        await _db.SaveChangesAsync();
+    }
+
+    public async Task<Lesson> AddLessonAsync(
+        string moduleId, string title, int durationMinutes, string sourceUrl)
+    {
+        var mod = await _db.CourseModules.Include(m => m.Lessons)
+            .FirstOrDefaultAsync(m => m.Id == moduleId)
+            ?? throw new InvalidOperationException("MODULE_NOT_FOUND");
+
+        var normalized = VideoSources.Normalize(sourceUrl);
+        var lesson = new LessonEntity
+        {
+            Id = Guid.NewGuid().ToString(),
+            ModuleId = mod.Id,
+            Title = title.Trim(),
+            DurationMinutes = Math.Max(1, durationMinutes),
+            SourceUrl = normalized,
+            Order = mod.Lessons.Count + 1,
+        };
+        _db.Lessons.Add(lesson);
+        await _db.SaveChangesAsync();
+        return new Lesson
+        {
+            Id = lesson.Id,
+            Title = lesson.Title,
+            DurationMinutes = lesson.DurationMinutes,
+            SourceUrl = lesson.SourceUrl,
+            Order = lesson.Order,
+        };
+    }
+
+    public async Task UpdateLessonAsync(
+        string lessonId, string title, int durationMinutes, string? sourceUrlOrNullKeep)
+    {
+        var lesson = await _db.Lessons.FirstOrDefaultAsync(l => l.Id == lessonId)
+            ?? throw new InvalidOperationException("LESSON_NOT_FOUND");
+        lesson.Title = title.Trim();
+        lesson.DurationMinutes = Math.Max(1, durationMinutes);
+        if (!string.IsNullOrWhiteSpace(sourceUrlOrNullKeep))
+            lesson.SourceUrl = VideoSources.Normalize(sourceUrlOrNullKeep);
+        await _db.SaveChangesAsync();
+    }
+
+    public async Task DeleteLessonAsync(string lessonId)
+    {
+        var lesson = await _db.Lessons.FirstOrDefaultAsync(l => l.Id == lessonId)
+            ?? throw new InvalidOperationException("LESSON_NOT_FOUND");
+        _db.Lessons.Remove(lesson);
+        await _db.SaveChangesAsync();
+    }
+
     public async Task<StoreStats> StatsAsync()
     {
         var paid = await _db.Orders.AsNoTracking().Where(o => o.Status == "paid").ToListAsync();
