@@ -1,36 +1,44 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# NEXA — Venta de cursos y certificaciones
 
-## Getting Started
+Plataforma web para vender cursos en video y emitir certificaciones, con **reproducción cifrada** para dificultar la descarga y la captura de pantalla.
 
-First, run the development server:
+## Qué incluye
+
+- Catálogo de cursos y certificaciones
+- Registro / login con sesión JWT en cookie httpOnly
+- Checkout demo (pago simulado) e inscripción
+- Aula con player protegido:
+  - Stream proxied por el servidor (la URL fuente nunca llega al browser)
+  - Cifrado **AES-256-CTR** por sesión de lección
+  - Descifrado en memoria (blob temporal)
+  - Marca de agua dinámica por usuario
+  - Bloqueo de menú contextual, atajos de guardado y detección de `getDisplayMedia`
+- Certificado con código al completar el 100% del curso
+
+## Stack
+
+- Next.js (App Router) + TypeScript + Tailwind CSS
+- Persistencia local en `data/store.json`
+- `jose` (JWT) + `bcryptjs` (contraseñas)
+
+## Cómo correr
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Abrí [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Cuenta demo: `demo@nexa.academy` / `demo1234`
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Flujo de prueba
 
-## Learn More
+1. Ingresá con la cuenta demo o creá una nueva
+2. Comprá un curso desde el catálogo
+3. Entrá al aula (`/aprender/[slug]`) y reproducí una lección
+4. Completá todas las lecciones para emitir el certificado
 
-To learn more about Next.js, take a look at the following resources:
+## Límites reales de protección
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Ninguna web app puede impedir al 100% la grabación de pantalla a nivel sistema operativo. NEXA eleva el costo de piratería con cifrado de sesión, watermark y bloqueos en el browser. Para máxima protección en producción conviene sumar **DRM comercial** (Widevine / FairPlay / PlayReady) y CDN de video.

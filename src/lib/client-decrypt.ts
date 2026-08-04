@@ -1,5 +1,5 @@
-function counterFromIv(iv: Uint8Array, blockOffset: number): Uint8Array {
-  const counter = new Uint8Array(iv);
+function counterFromIv(iv: Uint8Array, blockOffset: number): Uint8Array<ArrayBuffer> {
+  const counter = new Uint8Array(iv) as Uint8Array<ArrayBuffer>;
   let carry = blockOffset;
   for (let i = 15; i >= 0 && carry > 0; i -= 1) {
     const sum = counter[i] + (carry & 0xff);
@@ -37,7 +37,6 @@ export async function decryptAesCtr(
     );
   }
 
-  // Align to block: prepend dummy prefix bytes, decrypt, drop prefix.
   const enc = new Uint8Array(encrypted);
   const padded = new Uint8Array(prefix + enc.length);
   padded.set(enc, prefix);
@@ -48,5 +47,8 @@ export async function decryptAesCtr(
       padded,
     ),
   );
-  return decrypted.subarray(prefix).buffer;
+  return decrypted.subarray(prefix).buffer.slice(
+    decrypted.byteOffset,
+    decrypted.byteOffset + decrypted.byteLength,
+  );
 }
