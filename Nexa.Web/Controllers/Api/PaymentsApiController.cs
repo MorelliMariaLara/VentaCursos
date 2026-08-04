@@ -63,6 +63,10 @@ public class PaymentsApiController : ControllerBase
 
             string? initPoint = pref.TryGetProperty("init_point", out var ip) ? ip.GetString() : null;
             string? sandboxInit = pref.TryGetProperty("sandbox_init_point", out var sip) ? sip.GetString() : null;
+            // TEST- → sandbox_init_point; producción/APP_USR → init_point
+            var checkoutUrl = _payments.IsTestCredentials()
+                ? (sandboxInit ?? initPoint)
+                : (initPoint ?? sandboxInit);
 
             return Ok(new
             {
@@ -70,8 +74,7 @@ public class PaymentsApiController : ControllerBase
                 preferenceId = prefId,
                 initPoint,
                 sandboxInitPoint = sandboxInit,
-                // En local con credenciales APP_USR conviene init_point productivo
-                checkoutUrl = initPoint ?? sandboxInit,
+                checkoutUrl,
                 simulateOnly = false,
                 amount = course.Price,
                 currency = course.Currency,

@@ -25,6 +25,11 @@ public class PaymentService
         !PublicKey!.Contains("xxxxxxxx", StringComparison.OrdinalIgnoreCase) &&
         !AccessToken!.Contains("xxxxxxxx", StringComparison.OrdinalIgnoreCase);
 
+    /// <summary>Credenciales de prueba (TEST-...) → usar sandbox_init_point.</summary>
+    public bool IsTestCredentials() =>
+        (PublicKey?.StartsWith("TEST-", StringComparison.OrdinalIgnoreCase) ?? false) ||
+        (AccessToken?.StartsWith("TEST-", StringComparison.OrdinalIgnoreCase) ?? false);
+
     public bool AllowSimulatePayments()
     {
         var flag = _config["MP_ALLOW_SIMULATE"];
