@@ -2,9 +2,11 @@
 
 Este repo **es el proyecto web** para vender cursos, cobrar con Mercado Pago, emitir certificaciones y proteger videos.
 
-> Guía corta de arranque: **[INICIO.md](./INICIO.md)**  
-> Abrí el workspace: **`NEXA.code-workspace`**  
-> En Windows también podés ejecutar **`iniciar.bat`**
+> Guía de arranque: **[INICIO.md](./INICIO.md)**
+
+**Visual Studio 2022:** abrí **`NEXA.sln`** → clic derecho en **`Nexa.Web`** → *Set as Startup Project* → **F5**  
+**Cursor/VS Code:** abrí **`NEXA.code-workspace`**  
+**Windows rápido:** ejecutá **`iniciar.bat`**
 
 ```bash
 npm install

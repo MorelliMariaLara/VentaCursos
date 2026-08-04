@@ -1,44 +1,45 @@
 # Cómo abrir NEXA como proyecto de inicio
 
-Este repositorio **es el proyecto web**.  
-Carpeta a abrir: la raíz `VentaCursos` (donde está `package.json` y `NEXA.code-workspace`).
+Este repositorio es la **solución web NEXA**.
+
+| Archivo | Para qué |
+| --- | --- |
+| **`NEXA.sln`** | Abrir en **Visual Studio 2022** |
+| **`Nexa.Web.esproj`** | Proyecto web (marcá como *Startup Project*) |
+| **`NEXA.code-workspace`** | Abrir en Cursor / VS Code |
+| **`iniciar.bat`** | Arranque rápido en Windows |
 
 ---
 
-## Opción 1 — Doble clic (Windows)
+## Visual Studio 2022 (recomendado si usás VS)
 
-1. Abrí la carpeta del repo  
-2. Ejecutá **`iniciar.bat`**  
-3. Se instala lo necesario (si falta) y abre **http://localhost:3000**
+1. Instalá la workload **Node.js development** (Visual Studio Installer)  
+2. Abrí **`NEXA.sln`**  
+3. En el Explorador de soluciones, clic derecho en **`Nexa.Web`** → **Set as Startup Project**  
+4. Pulsá **F5** (o el botón Start)  
+5. Se abre **http://localhost:3000**
+
+Si es la primera vez, VS ejecuta `npm install` y luego `npm run solution:start`.
 
 ---
 
-## Opción 2 — Cursor / VS Code (recomendado)
+## Cursor / VS Code
 
-1. Abrí el archivo **`NEXA.code-workspace`** (o “Open Folder” sobre `VentaCursos`)  
-2. En la terminal integrada:
+1. Abrí **`NEXA.code-workspace`**  
+2. Terminal:
 
 ```bash
 npm install
 npm run solution:start
 ```
 
-3. O usá **Run and Debug** → configuración  
-   **“NEXA Web (proyecto de inicio)”** → Start (F5)
-
-4. Abrí el navegador en **http://localhost:3000**
+3. O Run and Debug → **NEXA Web (proyecto de inicio)**
 
 ---
 
-## Opción 3 — Terminal
+## Doble clic (Windows)
 
-```bash
-cd VentaCursos
-./iniciar.sh          # Mac / Linux
-# o
-npm install
-npm run dev
-```
+Ejecutá **`iniciar.bat`**.
 
 ---
 
@@ -51,20 +52,19 @@ npm run dev
 
 ---
 
-## Qué vas a ver
+## URLs principales
 
 | URL | Qué es |
 | --- | --- |
-| `/` | Landing NEXA |
+| `/` | Landing |
 | `/cursos` | Catálogo |
-| `/checkout/[slug]` | Pago Mercado Pago |
-| `/aprender/[slug]` | Aula con video cifrado |
-| `/admin` | Panel administrador |
+| `/checkout/[slug]` | Mercado Pago |
+| `/aprender/[slug]` | Aula cifrada |
+| `/admin` | Panel admin |
 
 ---
 
 ## Requisito
 
-- **Node.js 20+** (LTS): https://nodejs.org  
-
-Si querés pagos reales, completá las claves de Mercado Pago en `.env.local` (ver `.env.example`).
+- **Node.js 20+**: https://nodejs.org  
+- En Visual Studio: workload **Node.js development**

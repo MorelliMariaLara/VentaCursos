@@ -43,3 +43,11 @@ next-env.d.ts
 
 # local json database
 /data
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
