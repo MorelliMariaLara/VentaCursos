@@ -24,6 +24,9 @@ public class PaymentsApiController : ControllerBase
         configured = _payments.IsMercadoPagoConfigured(),
         simulate = _payments.AllowSimulatePayments(),
         publicKey = _payments.GetPublicKey(),
+        testCredentials = _payments.IsTestCredentials(),
+        pairOk = _payments.CredentialsPairLooksConsistent(),
+        diagnostics = _payments.CredentialDiagnostics(),
         webhookUrl = _payments.IsMercadoPagoConfigured() ? _payments.WebhookUrl : null,
     });
 
@@ -88,7 +91,12 @@ public class PaymentsApiController : ControllerBase
         {
             Console.Error.WriteLine(ex);
             Console.Error.WriteLine(_payments.CredentialDiagnostics());
-            return StatusCode(500, new { error = PaymentService.FriendlyError(ex.Message) });
+            return StatusCode(500, new
+            {
+                error = PaymentService.FriendlyError(ex.Message),
+                diagnostics = _payments.CredentialDiagnostics(),
+                pairOk = _payments.CredentialsPairLooksConsistent(),
+            });
         }
     }
 

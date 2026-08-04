@@ -30,6 +30,17 @@ public class PaymentService
         (PublicKey?.StartsWith("TEST-", StringComparison.OrdinalIgnoreCase) ?? false) ||
         (AccessToken?.StartsWith("TEST-", StringComparison.OrdinalIgnoreCase) ?? false);
 
+    /// <summary>Public Key y Access Token deben ser del mismo entorno (ambos TEST- o ambos APP_USR-).</summary>
+    public bool CredentialsPairLooksConsistent()
+    {
+        if (!IsMercadoPagoConfigured()) return false;
+        var pkTest = PublicKey!.StartsWith("TEST-", StringComparison.OrdinalIgnoreCase);
+        var tkTest = AccessToken!.StartsWith("TEST-", StringComparison.OrdinalIgnoreCase);
+        var pkApp = PublicKey.StartsWith("APP_USR-", StringComparison.OrdinalIgnoreCase);
+        var tkApp = AccessToken.StartsWith("APP_USR-", StringComparison.OrdinalIgnoreCase);
+        return (pkTest && tkTest) || (pkApp && tkApp);
+    }
+
     public bool AllowSimulatePayments()
     {
         var flag = _config["MP_ALLOW_SIMULATE"];

@@ -15,11 +15,11 @@
             }
         </div>
         <div class="panel">
-            <div id="walletBrick_container"></div>
             <a class="btn btn-primary" id="openCheckoutBtn" href="#" target="_blank" rel="noopener"
-               style="display:none;width:100%;margin-top:0.8rem;text-align:center">
-                Abrir Checkout Mercado Pago
+               style="display:none;width:100%;text-align:center">
+                Pagar con Mercado Pago
             </a>
+            <div id="walletBrick_container" style="margin-top:0.8rem"></div>
             <div id="pendingBox" style="display:none;margin-top:1rem">
                 <p class="ok" id="pendingMsg">Esperando acreditación del pago…</p>
                 <p class="hint">Pagá en la ventana de Mercado Pago (QR o tarjeta). Después volvé acá y esperá, o tocá “Verificar pago”.</p>
@@ -86,73 +86,79 @@
     };
   }
 
+  function showApiError(e) {
+    const msg = e?.message || "Error";
+    const diag = e?.data?.diagnostics;
+    document.getElementById("err").textContent = msg;
+    if (diag) {
+      document.getElementById("cfgHint").textContent =
+        "Credenciales cargadas: " + diag + " — si ves APP_USR viejo, cerrá la app, git pull, y volvé a abrir (el .env TEST debe pisar el entorno).";
+    }
+  }
+
   async function mountWallet(cfg, pref) {
     const hint = document.getElementById("cfgHint");
-    hint.textContent = "Pagá con Mercado Pago (incluye QR). Luego volvé a esta pestaña para desbloquear el curso.";
+    hint.textContent = cfg.testCredentials
+      ? "Modo prueba (TEST). Usá el botón verde o el de Mercado Pago. Pagá con un usuario de prueba."
+      : "Pagá con Mercado Pago. Luego volvé a esta pestaña para desbloquear el curso.";
     wireOpenCheckout(pref.checkoutUrl);
+    showPending("Cuando termines de pagar, el curso se habilita acá automáticamente.");
+    startPoll();
 
-    await new Promise((resolve, reject) => {
-      const s = document.createElement("script");
-      s.src = "https://sdk.mercadopago.com/js/v2";
-      s.onload = resolve;
-      s.onerror = () => reject(new Error("No se pudo cargar el SDK de Mercado Pago"));
-      document.body.appendChild(s);
-    });
-
+    // El botón init_point/sandbox ya alcanza; Wallet Brick es opcional.
     try {
+      await new Promise((resolve, reject) => {
+        const s = document.createElement("script");
+        s.src = "https://sdk.mercadopago.com/js/v2";
+        s.onload = resolve;
+        s.onerror = () => reject(new Error("No se pudo cargar el SDK de Mercado Pago"));
+        document.body.appendChild(s);
+      });
+
       const mp = new MercadoPago(cfg.publicKey, { locale: "es-AR" });
-      const bricksBuilder = mp.bricks();
-      await bricksBuilder.create("wallet", "walletBrick_container", {
+      await mp.bricks().create("wallet", "walletBrick_container", {
         initialization: {
           preferenceId: pref.preferenceId,
           redirectMode: "blank",
         },
         customization: {
-          texts: {
-            valueProp: "smart_option",
-          },
+          texts: { valueProp: "smart_option" },
         },
         callbacks: {
-          onReady: () => {
-            showPending("Cuando termines de pagar en Mercado Pago, el curso se habilita acá automáticamente.");
-            startPoll();
-          },
+          onReady: () => startPoll(),
           onSubmit: () => {
-            showPending("Pago iniciado. Esperando acreditación de Mercado Pago…");
+            showPending("Pago iniciado. Esperando acreditación…");
             startPoll();
             return Promise.resolve();
           },
           onError: (err) => {
             console.error(err);
-            const msg = err?.message || err?.cause || "No se pudo cargar Wallet Brick";
-            document.getElementById("err").textContent = msg;
-            if (pref.checkoutUrl) {
-              hint.textContent = "Usá «Abrir Checkout Mercado Pago» — es el mismo pago (Checkout Pro / QR).";
-              wireOpenCheckout(pref.checkoutUrl);
-              startPoll();
-            }
+            // No tapamos el botón principal: el link de Checkout Pro sigue válido
+            hint.textContent = "Usá el botón «Pagar con Mercado Pago» de arriba (Checkout Pro / sandbox).";
           },
         },
       });
     } catch (e) {
       console.error(e);
-      document.getElementById("err").textContent = e.message || "Error al iniciar Mercado Pago";
-      if (pref.checkoutUrl) {
-        hint.textContent = "Usá el botón «Abrir Checkout Mercado Pago».";
-        wireOpenCheckout(pref.checkoutUrl);
-        startPoll();
-      }
+      hint.textContent = "Usá el botón «Pagar con Mercado Pago» de arriba.";
     }
   }
 
   (async () => {
     const cfg = await api("/api/payments/config");
     const hint = document.getElementById("cfgHint");
+    if (cfg.diagnostics) hint.textContent = cfg.diagnostics;
+
+    if (cfg.configured && cfg.pairOk === false) {
+      document.getElementById("err").textContent =
+        "MP_PUBLIC_KEY y MP_ACCESS_TOKEN no son del mismo tipo (uno es TEST- y el otro APP_USR-). Pegá el par de Pruebas en .env y reiniciá.";
+      return;
+    }
+
     const returning =
       !!orderId &&
       ["pending", "in_process", "success", "approved", "failure", "rejected"].includes(initialStatus);
 
-    // Al volver de Mercado Pago: consultar la orden; no crear otra preferencia si sigue pendiente
     if (returning) {
       showPending("Confirmando el estado de tu pago…");
       startPoll();
@@ -171,10 +177,16 @@
       hint.textContent = "El pago anterior falló. Generamos un nuevo checkout abajo.";
     }
 
-    const pref = await api("/api/payments/preference", {
-      method: "POST",
-      body: JSON.stringify({ slug }),
-    });
+    let pref;
+    try {
+      pref = await api("/api/payments/preference", {
+        method: "POST",
+        body: JSON.stringify({ slug }),
+      });
+    } catch (e) {
+      showApiError(e);
+      return;
+    }
     orderId = pref.orderId || orderId;
 
     const simBtn = document.getElementById("simulateBtn");
@@ -199,10 +211,10 @@
       await mountWallet(cfg, pref);
     } else {
       document.getElementById("err").textContent =
-        "Configurá MP_PUBLIC_KEY y MP_ACCESS_TOKEN en .env (mismo par de la app de Pruebas) y reiniciá.";
+        "Configurá MP_PUBLIC_KEY y MP_ACCESS_TOKEN en .env (mismo par de Pruebas) y reiniciá.";
     }
   })().catch((e) => {
-    document.getElementById("err").textContent = e.message;
+    showApiError(e);
   });
 
   window.addEventListener("beforeunload", stopPoll);

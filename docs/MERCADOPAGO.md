@@ -40,11 +40,21 @@ MP_ALLOW_SIMULATE=false
 Causas frecuentes:
 
 1. **Public Key y Access Token de apps distintas** → copiá ambas de la misma aplicación (Pruebas).
-2. **Espacios al pegar** el token → una sola línea, sin comillas.
-3. **Webhook a localhost** → en local la app ya **no envía** `notification_url` (MP lo rechaza).
-4. No reiniciaste la app después de editar `.env`.
+2. **Mezclar `TEST-` con `APP_USR-`** → tienen que ser el mismo par (ambos TEST o ambos producción).
+3. **Variables viejas en Windows/IDE** → antes el `.env` no pisaba el entorno; ahora sí. Cerrá la app y abrila de nuevo; en la consola debe decir `PK=TEST-…` y `TK=TEST-…`.
+4. **Espacios al pegar** el token → una sola línea, sin comillas.
+5. **Webhook a localhost** → en local la app ya **no envía** `notification_url`.
+6. No reiniciaste la app después de `git pull` / editar `.env`.
 
-Solución rápida: volvé a copiar el par de **Pruebas**, guardá `.env`, reiniciá `dotnet run --project Nexa.Web`.
+Solución rápida:
+
+```bash
+git checkout main
+git pull
+dotnet run --project Nexa.Web
+```
+
+En la consola buscá la línea `MP configurado=True PK=TEST-… TK=TEST-…`. Si sigue `APP_USR`, borrá esas variables del sistema Windows o cerrá Visual Studio y volvé a abrir.
 
 También podés ponerlas en `Nexa.Web/appsettings.Development.json`:
 

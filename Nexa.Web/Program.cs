@@ -91,27 +91,33 @@ app.Run();
 
 static void LoadEnvFiles(WebApplicationBuilder builder)
 {
-    foreach (var file in new[] { ".env.local", ".env" })
+    // Orden: .env primero, .env.local después (gana local).
+    // Siempre pisan variables viejas del sistema: si no, Windows/IDE puede
+    // dejar MP_ACCESS_TOKEN=APP_USR-... y el .env con TEST- se ignora → UNAUTHORIZED.
+    foreach (var file in new[] { ".env", ".env.local" })
     {
-        var full = Path.Combine(builder.Environment.ContentRootPath, "..", file);
-        full = Path.GetFullPath(full);
-        if (!File.Exists(full))
+        foreach (var candidate in new[]
+                 {
+                     Path.GetFullPath(Path.Combine(builder.Environment.ContentRootPath, "..", file)),
+                     Path.Combine(builder.Environment.ContentRootPath, file),
+                 })
         {
-            full = Path.Combine(builder.Environment.ContentRootPath, file);
-            if (!File.Exists(full)) continue;
-        }
-
-        foreach (var line in File.ReadAllLines(full))
-        {
-            var trimmed = line.Trim();
-            if (string.IsNullOrEmpty(trimmed) || trimmed.StartsWith('#')) continue;
-            var i = trimmed.IndexOf('=');
-            if (i <= 0) continue;
-            var key = trimmed[..i].Trim();
-            var val = trimmed[(i + 1)..].Trim();
-            if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable(key)))
+            if (!File.Exists(candidate)) continue;
+            Console.WriteLine($"  .env cargado: {candidate}");
+            foreach (var line in File.ReadAllLines(candidate))
+            {
+                var trimmed = line.Trim();
+                if (string.IsNullOrEmpty(trimmed) || trimmed.StartsWith('#')) continue;
+                var i = trimmed.IndexOf('=');
+                if (i <= 0) continue;
+                var key = trimmed[..i].Trim();
+                var val = trimmed[(i + 1)..].Trim().Trim('"').Trim('\'');
                 Environment.SetEnvironmentVariable(key, val);
-            builder.Configuration[key] = Environment.GetEnvironmentVariable(key) ?? val;
+                builder.Configuration[key] = val;
+                if (key == "CONNECTION_STRING")
+                    builder.Configuration["ConnectionStrings:CursoVentas"] = val;
+            }
+            break; // un path por nombre de archivo
         }
     }
 
