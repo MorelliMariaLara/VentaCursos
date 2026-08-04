@@ -28,25 +28,24 @@ Tiene que mostrar algo como `v20.x` o `v22.x`. Si dice que no reconoce `node`, e
 
 ## Si `npm install` sale con código 1
 
-En la carpeta del proyecto (`VentaCursos`) ejecutá:
+En Windows suele fallar por `node_modules` a medias o archivos bloqueados (Visual Studio / antivirus).
 
-```powershell
-cd "C:\Users\Maria Lara\source\repos\VentaCursos"
+1. Cerrá **Visual Studio** por completo  
+2. Doble clic en **`install.bat`**  
+   o en CMD:
+
+```bat
+cd /d "C:\Users\Maria Lara\source\repos\VentaCursos"
 git pull origin main
-node -v
-npm -v
-npm cache clean --force
-Remove-Item -Recurse -Force node_modules -ErrorAction SilentlyContinue
-npm install --legacy-peer-deps
+install.bat
 ```
 
-Si sigue fallando, ejecutá **`iniciar.bat`** (hace el mismo proceso y muestra el error).
+Eso borra `node_modules`, limpia caché y reinstala todo.
 
-Causas frecuentes:
-1. Node menor a 20  
-2. No se hizo `git pull` y faltan archivos  
-3. Antivirus bloqueando `node_modules`  
-4. Instalación de Node sin reiniciar Visual Studio  
+Si aún falla:
+1. Pausá el antivirus un momento  
+2. Ejecutá `install.bat` como Administrador  
+3. Desactivá VPN si usás  
 
 ---
 
