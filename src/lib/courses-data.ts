@@ -1,14 +1,13 @@
 import type { Course } from "./types";
 
-/** Short sample videos are proxied + AES-encrypted server-side; URLs never reach the browser. */
-const SAMPLE_A =
-  "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4";
-const SAMPLE_B =
-  "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4";
-const SAMPLE_C =
-  "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4";
-const SAMPLE_D =
-  "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4";
+/**
+ * Local lesson files under /content/videos (never publicly served).
+ * The stream API reads and encrypts them before sending to the browser.
+ */
+const SAMPLE_A = "local:lesson-a.mp4";
+const SAMPLE_B = "local:lesson-b.mp4";
+const SAMPLE_C = "local:lesson-c.mp4";
+const SAMPLE_D = "local:lesson-d.mp4";
 
 export const COURSES: Course[] = [
   {

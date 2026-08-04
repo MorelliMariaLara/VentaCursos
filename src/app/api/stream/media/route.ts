@@ -1,18 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { findLesson, getCourseById, getEnrollment } from "@/lib/db";
 import { encryptChunk, verifyStreamToken } from "@/lib/video-crypto";
+import { readVideoSource } from "@/lib/video-source";
 
 export const runtime = "nodejs";
-
-async function fetchUpstream(
-  url: string,
-  range?: string | null,
-): Promise<Response> {
-  const headers: HeadersInit = {};
-  if (range) headers.Range = range;
-  const res = await fetch(url, { headers, cache: "no-store" });
-  return res;
-}
 
 export async function GET(req: NextRequest) {
   const token = req.nextUrl.searchParams.get("token");
@@ -41,17 +32,10 @@ export async function GET(req: NextRequest) {
   }
 
   const range = req.headers.get("range");
-  let upstream: Response;
+  let source;
   try {
-    upstream = await fetchUpstream(found.lesson.sourceUrl, range);
+    source = await readVideoSource(found.lesson.sourceUrl, range);
   } catch {
-    return NextResponse.json(
-      { error: "No se pudo obtener el video fuente" },
-      { status: 502 },
-    );
-  }
-
-  if (!upstream.ok && upstream.status !== 206) {
     return NextResponse.json(
       { error: "Fuente de video no disponible" },
       { status: 502 },
@@ -61,18 +45,16 @@ export async function GET(req: NextRequest) {
   const key = Buffer.from(claims.keyB64, "base64");
   const iv = Buffer.from(claims.ivB64, "base64");
 
-  const contentRange = upstream.headers.get("content-range");
   let byteOffset = 0;
-  if (contentRange) {
-    const match = /bytes\s+(\d+)-/i.exec(contentRange);
+  if (source.contentRange) {
+    const match = /bytes\s+(\d+)-/i.exec(source.contentRange);
     if (match) byteOffset = Number(match[1]);
   } else if (range) {
     const match = /bytes=(\d+)-/i.exec(range);
     if (match) byteOffset = Number(match[1]);
   }
 
-  const plain = Buffer.from(await upstream.arrayBuffer());
-  const encrypted = encryptChunk(plain, key, iv, byteOffset);
+  const encrypted = encryptChunk(source.body, key, iv, byteOffset);
 
   const headers = new Headers();
   headers.set("Content-Type", "application/octet-stream");
@@ -81,11 +63,10 @@ export async function GET(req: NextRequest) {
   headers.set("Cache-Control", "no-store, no-cache, private");
   headers.set("Accept-Ranges", "bytes");
   headers.set("X-Content-Type-Options", "nosniff");
+  headers.set("Content-Length", String(encrypted.length));
 
-  const contentLength = upstream.headers.get("content-length");
-  if (contentLength) headers.set("Content-Length", contentLength);
-  if (contentRange) {
-    headers.set("Content-Range", contentRange);
+  if (source.contentRange) {
+    headers.set("Content-Range", source.contentRange);
     return new NextResponse(new Uint8Array(encrypted), {
       status: 206,
       headers,

@@ -18,7 +18,13 @@ async function ensureDb(): Promise<DatabaseShape> {
   await fs.mkdir(DATA_DIR, { recursive: true });
   try {
     const raw = await fs.readFile(DB_PATH, "utf8");
-    return JSON.parse(raw) as DatabaseShape;
+    const db = JSON.parse(raw) as DatabaseShape;
+    // Keep catalog in sync with code while preserving users/enrollments.
+    const catalogChanged =
+      JSON.stringify(db.courses) !== JSON.stringify(COURSES);
+    db.courses = COURSES;
+    if (catalogChanged) await writeDb(db);
+    return db;
   } catch {
     const demoPassword = await bcrypt.hash("demo1234", 10);
     const seed: DatabaseShape = {
