@@ -24,27 +24,39 @@ public class PaymentService
         !string.IsNullOrWhiteSpace(PublicKey) &&
         !PublicKey!.Contains("xxxxxxxx", StringComparison.OrdinalIgnoreCase) &&
         !AccessToken!.Contains("xxxxxxxx", StringComparison.OrdinalIgnoreCase) &&
+        HasValidCredentialPrefix(PublicKey) &&
+        HasValidCredentialPrefix(AccessToken) &&
         !HasMalformedTestAppUsrPrefix();
+
+    public static bool HasValidCredentialPrefix(string? value) =>
+        !string.IsNullOrWhiteSpace(value) &&
+        (value.StartsWith("TEST-", StringComparison.OrdinalIgnoreCase) ||
+         value.StartsWith("APP_USR-", StringComparison.OrdinalIgnoreCase));
 
     /// <summary>
     /// Error típico: pegar "TEST-" delante de una clave APP_USR → "TEST-APP_USR-...".
-    /// Eso no es una credencial válida de Mercado Pago.
     /// </summary>
     public bool HasMalformedTestAppUsrPrefix() =>
         (PublicKey?.Contains("TEST-APP_USR", StringComparison.OrdinalIgnoreCase) ?? false) ||
         (AccessToken?.Contains("TEST-APP_USR", StringComparison.OrdinalIgnoreCase) ?? false);
 
+    /// <summary>
+    /// Error típico: borrar a mano el prefijo APP_USR y dejar "-032dff96-…" / "-625001239…".
+    /// </summary>
+    public bool HasStrippedAppUsrPrefix() =>
+        (PublicKey?.StartsWith('-') ?? false) ||
+        (AccessToken?.StartsWith('-') ?? false);
+
     /// <summary>Credenciales de prueba (TEST-...) → usar sandbox_init_point.</summary>
     public bool IsTestCredentials() =>
-        !HasMalformedTestAppUsrPrefix() &&
-        ((PublicKey?.StartsWith("TEST-", StringComparison.OrdinalIgnoreCase) ?? false) ||
-         (AccessToken?.StartsWith("TEST-", StringComparison.OrdinalIgnoreCase) ?? false));
+        IsMercadoPagoConfigured() &&
+        PublicKey!.StartsWith("TEST-", StringComparison.OrdinalIgnoreCase) &&
+        AccessToken!.StartsWith("TEST-", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>Public Key y Access Token deben ser del mismo entorno (ambos TEST- o ambos APP_USR-).</summary>
     public bool CredentialsPairLooksConsistent()
     {
         if (!IsMercadoPagoConfigured()) return false;
-        if (HasMalformedTestAppUsrPrefix()) return false;
         var pkTest = PublicKey!.StartsWith("TEST-", StringComparison.OrdinalIgnoreCase);
         var tkTest = AccessToken!.StartsWith("TEST-", StringComparison.OrdinalIgnoreCase);
         var pkApp = PublicKey.StartsWith("APP_USR-", StringComparison.OrdinalIgnoreCase);
@@ -57,13 +69,21 @@ public class PaymentService
         if (HasMalformedTestAppUsrPrefix())
         {
             return "Tus claves empiezan con TEST-APP_USR-… Eso está mal: no le agregues \"TEST-\" a una clave APP_USR. " +
-                   "En Tus integraciones → Pruebas copiá el par que ya empieza con TEST- (ej: TEST-de2c8c3d-… y TEST-2564…). " +
-                   "Pegalo tal cual en .env, guardá y reiniciá.";
+                   "Pegá el par de Pruebas que ya empieza con TEST- (ej: TEST-de2c8c3d-… y TEST-2564…).";
+        }
+        if (HasStrippedAppUsrPrefix() ||
+            (!string.IsNullOrWhiteSpace(PublicKey) && !HasValidCredentialPrefix(PublicKey)) ||
+            (!string.IsNullOrWhiteSpace(AccessToken) && !HasValidCredentialPrefix(AccessToken)))
+        {
+            return "Tus claves están incompletas (empiezan con \"-\" o sin TEST-/APP_USR-). " +
+                   "No edites a mano el prefijo. En .env poné exactamente:\n" +
+                   "MP_PUBLIC_KEY=TEST-de2c8c3d-972c-4a5b-a05c-22745894b73a\n" +
+                   "MP_ACCESS_TOKEN=TEST-2564533232408086-080413-6bb40d3c790d8550063469c4e6000620-706865166";
         }
         if (string.IsNullOrWhiteSpace(PublicKey) || string.IsNullOrWhiteSpace(AccessToken))
             return "Faltan MP_PUBLIC_KEY o MP_ACCESS_TOKEN en .env";
         if (!CredentialsPairLooksConsistent())
-            return "MP_PUBLIC_KEY y MP_ACCESS_TOKEN no son del mismo tipo (mezcla TEST- con APP_USR-).";
+            return "MP_PUBLIC_KEY y MP_ACCESS_TOKEN no son del mismo tipo (uno TEST- y el otro APP_USR-). Usá el par completo de Pruebas.";
         return null;
     }
 

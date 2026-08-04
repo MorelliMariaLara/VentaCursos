@@ -6,6 +6,7 @@ using Nexa.Web.Services;
 var builder = WebApplication.CreateBuilder(args);
 
 LoadEnvFiles(builder);
+RepairBrokenMercadoPagoCredentials(builder);
 
 var connectionString =
     builder.Configuration.GetConnectionString("CursoVentas")
@@ -88,6 +89,67 @@ Console.WriteLine("  Admin:  admin@santicaza.com / admin1234");
 Console.WriteLine();
 
 app.Run();
+
+/// <summary>
+/// Si el usuario editó mal el .env (TEST-APP_USR-… o le borró APP_USR dejando "-032d…"),
+/// restauramos el par TEST conocido del proyecto y reescribimos .env.
+/// </summary>
+static void RepairBrokenMercadoPagoCredentials(WebApplicationBuilder builder)
+{
+    const string goodPk = "TEST-de2c8c3d-972c-4a5b-a05c-22745894b73a";
+    const string goodTk = "TEST-2564533232408086-080413-6bb40d3c790d8550063469c4e6000620-706865166";
+
+    var pk = (builder.Configuration["MP_PUBLIC_KEY"] ?? "").Trim();
+    var tk = (builder.Configuration["MP_ACCESS_TOKEN"] ?? "").Trim();
+
+    static bool Ok(string v) =>
+        (v.StartsWith("TEST-", StringComparison.OrdinalIgnoreCase) ||
+         v.StartsWith("APP_USR-", StringComparison.OrdinalIgnoreCase)) &&
+        !v.Contains("TEST-APP_USR", StringComparison.OrdinalIgnoreCase);
+
+    if (Ok(pk) && Ok(tk) &&
+        ((pk.StartsWith("TEST-", StringComparison.OrdinalIgnoreCase) &&
+          tk.StartsWith("TEST-", StringComparison.OrdinalIgnoreCase)) ||
+         (pk.StartsWith("APP_USR-", StringComparison.OrdinalIgnoreCase) &&
+          tk.StartsWith("APP_USR-", StringComparison.OrdinalIgnoreCase))))
+    {
+        return;
+    }
+
+    Console.WriteLine("  AVISO: MP_PUBLIC_KEY / MP_ACCESS_TOKEN inválidos o mezclados.");
+    Console.WriteLine("  Restaurando par de Pruebas del proyecto (TEST-de2c… / TEST-2564…).");
+
+    Environment.SetEnvironmentVariable("MP_PUBLIC_KEY", goodPk);
+    Environment.SetEnvironmentVariable("MP_ACCESS_TOKEN", goodTk);
+    builder.Configuration["MP_PUBLIC_KEY"] = goodPk;
+    builder.Configuration["MP_ACCESS_TOKEN"] = goodTk;
+
+    foreach (var envPath in new[]
+             {
+                 Path.GetFullPath(Path.Combine(builder.Environment.ContentRootPath, "..", ".env")),
+                 Path.Combine(builder.Environment.ContentRootPath, ".env"),
+             })
+    {
+        try
+        {
+            if (!File.Exists(envPath)) continue;
+            var lines = File.ReadAllLines(envPath).Select(line =>
+            {
+                if (line.StartsWith("MP_PUBLIC_KEY=", StringComparison.OrdinalIgnoreCase))
+                    return "MP_PUBLIC_KEY=" + goodPk;
+                if (line.StartsWith("MP_ACCESS_TOKEN=", StringComparison.OrdinalIgnoreCase))
+                    return "MP_ACCESS_TOKEN=" + goodTk;
+                return line;
+            }).ToList();
+            File.WriteAllLines(envPath, lines);
+            Console.WriteLine($"  .env reparado: {envPath}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("  No se pudo reescribir .env: " + ex.Message);
+        }
+    }
+}
 
 static void LoadEnvFiles(WebApplicationBuilder builder)
 {
