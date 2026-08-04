@@ -6,18 +6,20 @@
     "node": ">=20"
   },
   "scripts": {
-    "dev": "next dev --port 3000",
-    "build": "next build",
-    "start": "next start --port 3000",
+    "predev": "node scripts/check-next.mjs",
+    "dev": "node ./node_modules/next/dist/bin/next dev --port 3000",
+    "build": "node ./node_modules/next/dist/bin/next build",
+    "start": "node ./node_modules/next/dist/bin/next start --port 3000",
     "lint": "eslint",
     "seed": "tsx scripts/seed.ts",
     "setup": "node scripts/setup.mjs",
     "solution:setup": "node scripts/setup.mjs",
-    "solution:start": "next dev --port 3000",
+    "solution:start": "node ./node_modules/next/dist/bin/next dev --port 3000",
     "solution:up": "docker compose up --build -d",
     "solution:down": "docker compose down",
     "solution:logs": "docker compose logs -f nexa",
-    "inicio": "node scripts/setup.mjs && next dev --port 3000"
+    "inicio": "node scripts/setup.mjs && node ./node_modules/next/dist/bin/next dev --port 3000",
+    "reparar": "node scripts/setup.mjs"
   },
   "dependencies": {
     "@mercadopago/sdk-react": "^1.0.7",

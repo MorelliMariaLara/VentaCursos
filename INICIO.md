@@ -47,13 +47,17 @@ Add-MpPreference -ExclusionPath "C:\Users\Maria Lara\source\repos\VentaCursos"
 
 3. Actualizá el repo y ejecutá el instalador:
 
-```bat
-cd /d "C:\Users\Maria Lara\source\repos\VentaCursos"
+```powershell
+cd "C:\Users\Maria Lara\source\repos\VentaCursos"
 git pull origin main
-install.bat
+Set-ExecutionPolicy -Scope Process Bypass
+.\reparar.ps1
 ```
 
-`install.bat` cierra `node`, borra `node_modules` corruptos (incluye carpetas `.xxxxx`), limpia caché y reinstala con binarios opcionales.
+O doble clic en **`install.bat`**.
+
+**No corras `npm run dev` hasta que la instalación diga OK.**  
+Si ves `"next" no se reconoce`, es porque todavía falta instalar: corré `.\reparar.ps1`.
 
 Si aún falla: clic derecho en `install.bat` → **Ejecutar como administrador**, o reiniciá la PC y volvé a correrlo.  
 
