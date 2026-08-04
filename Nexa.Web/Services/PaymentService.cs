@@ -16,11 +16,14 @@ public class PaymentService
         _httpClientFactory = httpClientFactory;
     }
 
+    private string? AccessToken => _config["MP_ACCESS_TOKEN"]?.Trim();
+    private string? PublicKey => _config["MP_PUBLIC_KEY"]?.Trim();
+
     public bool IsMercadoPagoConfigured() =>
-        !string.IsNullOrWhiteSpace(_config["MP_ACCESS_TOKEN"]) &&
-        !string.IsNullOrWhiteSpace(_config["MP_PUBLIC_KEY"]) &&
-        !_config["MP_PUBLIC_KEY"]!.Contains("xxxxxxxx", StringComparison.OrdinalIgnoreCase) &&
-        !_config["MP_ACCESS_TOKEN"]!.Contains("xxxxxxxx", StringComparison.OrdinalIgnoreCase);
+        !string.IsNullOrWhiteSpace(AccessToken) &&
+        !string.IsNullOrWhiteSpace(PublicKey) &&
+        !PublicKey!.Contains("xxxxxxxx", StringComparison.OrdinalIgnoreCase) &&
+        !AccessToken!.Contains("xxxxxxxx", StringComparison.OrdinalIgnoreCase);
 
     public bool AllowSimulatePayments()
     {
@@ -30,57 +33,78 @@ public class PaymentService
         return !IsMercadoPagoConfigured();
     }
 
-    public string? GetPublicKey() => _config["MP_PUBLIC_KEY"];
+    public string? GetPublicKey() => PublicKey;
 
     public string AppUrl => (_config["APP_URL"] ?? "http://localhost:5000").TrimEnd('/');
 
-    public string WebhookUrl =>
-        !string.IsNullOrWhiteSpace(_config["MP_WEBHOOK_URL"])
-            ? _config["MP_WEBHOOK_URL"]!
-            : $"{AppUrl}/api/webhooks/mercadopago";
+    public bool IsPublicHttpsApp =>
+        AppUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase) &&
+        !AppUrl.Contains("localhost", StringComparison.OrdinalIgnoreCase);
+
+    public string? WebhookUrl
+    {
+        get
+        {
+            var configured = _config["MP_WEBHOOK_URL"]?.Trim();
+            if (!string.IsNullOrWhiteSpace(configured) &&
+                configured.StartsWith("https://", StringComparison.OrdinalIgnoreCase) &&
+                !configured.Contains("localhost", StringComparison.OrdinalIgnoreCase))
+            {
+                return configured;
+            }
+
+            // MP rechaza webhooks a localhost → no enviarlos en local
+            if (!IsPublicHttpsApp) return null;
+            return $"{AppUrl}/api/webhooks/mercadopago";
+        }
+    }
 
     public async Task<JsonElement> CreatePreferenceAsync(PreferenceInput input)
     {
-        var body = new
+        // Body dinámico: en localhost NO mandamos notification_url ni auto_return
+        // (con credenciales APP_USR eso dispara "At least one policy returned UNAUTHORIZED")
+        var root = new JsonObject
         {
-            items = new[]
+            ["items"] = new JsonArray
             {
-                new
+                new JsonObject
                 {
-                    id = input.CourseId,
-                    title = input.Title,
-                    description = $"Curso SANTICAZA: {input.Title}",
-                    quantity = 1,
-                    unit_price = input.Amount,
-                    currency_id = input.Currency,
+                    ["id"] = input.CourseId,
+                    ["title"] = input.Title,
+                    ["description"] = $"Curso SANTICAZA: {input.Title}",
+                    ["quantity"] = 1,
+                    ["unit_price"] = input.Amount,
+                    ["currency_id"] = input.Currency,
                 },
             },
-            payer = new { email = input.PayerEmail },
-            external_reference = input.OrderId,
-            metadata = new
+            ["payer"] = new JsonObject { ["email"] = input.PayerEmail },
+            ["external_reference"] = input.OrderId,
+            ["metadata"] = new JsonObject
             {
-                order_id = input.OrderId,
-                course_id = input.CourseId,
-                slug = input.Slug,
+                ["order_id"] = input.OrderId,
+                ["course_id"] = input.CourseId,
+                ["slug"] = input.Slug,
             },
-            back_urls = new
-            {
-                success = $"{AppUrl}/Checkout?slug={Uri.EscapeDataString(input.Slug)}&status=success",
-                failure = $"{AppUrl}/Checkout?slug={Uri.EscapeDataString(input.Slug)}&status=failure",
-                pending = $"{AppUrl}/Checkout?slug={Uri.EscapeDataString(input.Slug)}&status=pending",
-            },
-            auto_return = "approved",
-            notification_url = WebhookUrl,
-            statement_descriptor = "SANTICAZA",
         };
 
-        return await MpFetchAsync("/checkout/preferences", HttpMethod.Post, body);
+        if (IsPublicHttpsApp)
+        {
+            root["back_urls"] = new JsonObject
+            {
+                ["success"] = $"{AppUrl}/Checkout?slug={Uri.EscapeDataString(input.Slug)}&status=success",
+                ["failure"] = $"{AppUrl}/Checkout?slug={Uri.EscapeDataString(input.Slug)}&status=failure",
+                ["pending"] = $"{AppUrl}/Checkout?slug={Uri.EscapeDataString(input.Slug)}&status=pending",
+            };
+            root["auto_return"] = "approved";
+        }
+
+        var hook = WebhookUrl;
+        if (!string.IsNullOrEmpty(hook))
+            root["notification_url"] = hook;
+
+        return await MpFetchAsync("/checkout/preferences", HttpMethod.Post, root);
     }
 
-    /// <summary>
-    /// Crea el pago a partir del formData del Payment Brick,
-    /// completando monto, referencia y webhook.
-    /// </summary>
     public async Task<JsonElement> CreatePaymentFromBrickAsync(
         JsonElement? formData,
         PreferenceInput orderInfo,
@@ -88,21 +112,29 @@ public class PaymentService
     {
         JsonObject payload;
         if (formData.HasValue && formData.Value.ValueKind is JsonValueKind.Object)
-        {
             payload = JsonNode.Parse(formData.Value.GetRawText())!.AsObject();
-        }
         else
-        {
             payload = new JsonObject();
-        }
 
-        // Campos obligatorios / de negocio (no pisar si Brick ya los mandó bien)
         if (!payload.ContainsKey("transaction_amount") || payload["transaction_amount"] is null)
             payload["transaction_amount"] = orderInfo.Amount;
 
+        // MP espera número (no string) en transaction_amount
+        if (payload["transaction_amount"] is JsonValue amtVal && amtVal.TryGetValue<string>(out var amtStr) &&
+            decimal.TryParse(amtStr, System.Globalization.NumberStyles.Any,
+                System.Globalization.CultureInfo.InvariantCulture, out var parsedAmt))
+        {
+            payload["transaction_amount"] = parsedAmt;
+        }
+
         payload["description"] = $"SANTICAZA · {orderInfo.Title}";
         payload["external_reference"] = orderInfo.OrderId;
-        payload["notification_url"] = WebhookUrl;
+
+        var hook = WebhookUrl;
+        if (!string.IsNullOrEmpty(hook))
+            payload["notification_url"] = hook;
+        else
+            payload.Remove("notification_url");
 
         if (payload["payer"] is not JsonObject)
         {
@@ -124,7 +156,9 @@ public class PaymentService
             };
         }
 
-        return await MpFetchAsync("/v1/payments", HttpMethod.Post, payload, idempotencyKey);
+        // Idempotency única por intento (reusar order.Id falla si se reintenta el Brick)
+        var key = $"{idempotencyKey}-{Guid.NewGuid():N}"[..64];
+        return await MpFetchAsync("/v1/payments", HttpMethod.Post, payload, key);
     }
 
     public Task<JsonElement> GetPaymentAsync(string paymentId) =>
@@ -143,12 +177,32 @@ public class PaymentService
 
     public static bool IsAccredited(string mappedStatus) => mappedStatus == "paid";
 
+    public static string FriendlyError(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw)) return "Error de Mercado Pago";
+        if (raw.Contains("UNAUTHORIZED", StringComparison.OrdinalIgnoreCase) ||
+            raw.Contains("pa_unauthorized", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Mercado Pago rechazó la autorización. Verificá que MP_PUBLIC_KEY y MP_ACCESS_TOKEN sean el par de la misma aplicación (Pruebas), sin espacios, y reiniciá la app. En local no uses notification_url a localhost.";
+        }
+        if (raw.Contains("invalid_token", StringComparison.OrdinalIgnoreCase) ||
+            raw.Contains("Invalid access token", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Access Token inválido. Copiá de nuevo el Access Token de prueba desde Tus integraciones.";
+        }
+        return raw.Length > 220 ? raw[..220] + "…" : raw;
+    }
+
     private async Task<JsonElement> MpFetchAsync(string path, HttpMethod method, object? body = null, string? idempotencyKey = null)
     {
-        var token = _config["MP_ACCESS_TOKEN"] ?? throw new InvalidOperationException("MP_ACCESS_TOKEN_MISSING");
+        var token = AccessToken ?? throw new InvalidOperationException("MP_ACCESS_TOKEN_MISSING");
+        if (token.Contains(' ') || token.Contains('\n') || token.Contains('\r'))
+            throw new InvalidOperationException("MP_ACCESS_TOKEN tiene espacios o saltos de línea. Pegalo en una sola línea.");
+
         var client = _httpClientFactory.CreateClient();
         using var req = new HttpRequestMessage(method, $"https://api.mercadopago.com{path}");
         req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        req.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
         if (!string.IsNullOrEmpty(idempotencyKey))
             req.Headers.TryAddWithoutValidation("X-Idempotency-Key", idempotencyKey);
 
@@ -173,15 +227,22 @@ public class PaymentService
                 ? m.GetString()
                 : clone.TryGetProperty("error", out var e)
                     ? e.GetString()
-                    : "MP_API_ERROR";
+                    : $"MP_API_ERROR_{(int)res.StatusCode}";
             var cause = "";
             if (clone.TryGetProperty("cause", out var causes) && causes.ValueKind == JsonValueKind.Array)
             {
                 cause = string.Join("; ", causes.EnumerateArray()
-                    .Select(c => c.TryGetProperty("description", out var d) ? d.GetString() : null)
+                    .Select(c =>
+                    {
+                        var d = c.TryGetProperty("description", out var desc) ? desc.GetString() : null;
+                        var cde = c.TryGetProperty("code", out var code) ? code.ToString() : null;
+                        return string.Join(" ", new[] { cde, d }.Where(x => !string.IsNullOrEmpty(x)));
+                    })
                     .Where(x => !string.IsNullOrEmpty(x)));
             }
-            throw new InvalidOperationException(string.IsNullOrEmpty(cause) ? (msg ?? "MP_API_ERROR") : $"{msg}: {cause}");
+            var raw = string.IsNullOrEmpty(cause) ? (msg ?? "MP_API_ERROR") : $"{msg}: {cause}";
+            Console.Error.WriteLine($"[MP] {(int)res.StatusCode} {path} → {raw}");
+            throw new InvalidOperationException(FriendlyError(raw));
         }
         return clone;
     }

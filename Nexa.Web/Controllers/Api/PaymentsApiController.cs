@@ -77,9 +77,7 @@ public class PaymentsApiController : ControllerBase
         catch (Exception ex)
         {
             Console.Error.WriteLine(ex);
-            return StatusCode(500, new { error = ex.Message.Contains("MP_") || ex.Message.Length < 180
-                ? ex.Message
-                : "No se pudo crear la preferencia de Mercado Pago" });
+            return StatusCode(500, new { error = PaymentService.FriendlyError(ex.Message) });
         }
     }
 

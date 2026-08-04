@@ -29,11 +29,22 @@ En **Tus integraciones** → tu aplicación → **Datos de integración** → **
 Creá un archivo `.env` en la raíz del repo (junto a `NEXA.sln`):
 
 ```env
-MP_PUBLIC_KEY=APP_USR-xxxxxxxx  # Public Key de prueba
-MP_ACCESS_TOKEN=APP_USR-xxxxxxxx  # Access Token de prueba
+MP_PUBLIC_KEY=APP_USR-xxxxxxxx
+MP_ACCESS_TOKEN=APP_USR-xxxxxxxx
 APP_URL=http://localhost:5000
 MP_ALLOW_SIMULATE=false
 ```
+
+### Error: `At least one policy returned UNAUTHORIZED`
+
+Causas frecuentes:
+
+1. **Public Key y Access Token de apps distintas** → copiá ambas de la misma aplicación (Pruebas).
+2. **Espacios al pegar** el token → una sola línea, sin comillas.
+3. **Webhook a localhost** → en local la app ya **no envía** `notification_url` (MP lo rechaza).
+4. No reiniciaste la app después de editar `.env`.
+
+Solución rápida: volvé a copiar el par de **Pruebas**, guardá `.env`, reiniciá `dotnet run --project Nexa.Web`.
 
 También podés ponerlas en `Nexa.Web/appsettings.Development.json`:
 
