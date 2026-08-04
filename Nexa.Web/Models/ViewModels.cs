@@ -33,6 +33,7 @@ public class CourseDetailViewModel
     public bool Enrolled { get; set; }
     public Enrollment? Enrollment { get; set; }
     public string PriceLabel { get; set; } = "";
+    public bool AdminFreeAccess { get; set; }
 }
 
 public class MyCourseItemViewModel

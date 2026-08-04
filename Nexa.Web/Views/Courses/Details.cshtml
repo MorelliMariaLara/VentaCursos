@@ -21,9 +21,13 @@
             <div class="price" style="font-size:1.4rem;margin-bottom:0.8rem">@Model.PriceLabel</div>
             <p class="hint">Instructor: @c.Instructor</p>
             <div style="margin-top:1rem">
-                @if (Model.Enrolled)
+                @if (Model.Enrolled || Model.AdminFreeAccess)
                 {
                     <a class="btn btn-primary" asp-controller="Learn" asp-action="Index" asp-route-slug="@c.Slug">Ir al aula</a>
+                    @if (Model.AdminFreeAccess)
+                    {
+                        <p class="hint" style="margin-top:0.5rem">Acceso admin: sin pago.</p>
+                    }
                     @if (!string.IsNullOrEmpty(Model.Enrollment?.CertificateCode))
                     {
                         <a class="btn btn-ghost" asp-controller="Certificate" asp-action="Index" asp-route-slug="@c.Slug">Ver certificado</a>

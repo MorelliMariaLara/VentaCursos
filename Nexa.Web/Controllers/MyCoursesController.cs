@@ -15,9 +15,27 @@ public class MyCoursesController : Controller
     public async Task<IActionResult> Index()
     {
         var userId = AuthCookie.UserId(User)!;
+        var isAdmin = AuthCookie.IsAdmin(User);
+        var courses = await _store.ListCoursesAsync(includeUnpublished: isAdmin);
+
+        // Admin: acceso a todos los cursos sin pagar
+        if (isAdmin)
+        {
+            var items = new List<MyCourseItemViewModel>();
+            foreach (var course in courses)
+            {
+                var enrollment = await _store.EnsureCourseAccessAsync(userId, course.Id, isAdmin: true);
+                items.Add(new MyCourseItemViewModel
+                {
+                    Course = CourseMapper.ToPublic(course),
+                    Enrollment = enrollment,
+                });
+            }
+            return View(items);
+        }
+
         var enrollments = await _store.ListEnrollmentsForUserAsync(userId);
-        var courses = await _store.ListCoursesAsync(includeUnpublished: true);
-        var items = enrollments
+        var studentItems = enrollments
             .Select(e =>
             {
                 var course = courses.FirstOrDefault(c => c.Id == e.CourseId);
@@ -28,6 +46,6 @@ public class MyCoursesController : Controller
             .Where(x => x != null)
             .Cast<MyCourseItemViewModel>()
             .ToList();
-        return View(items);
+        return View(studentItems);
     }
 }

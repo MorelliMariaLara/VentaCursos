@@ -24,8 +24,13 @@ public class CoursesController : Controller
 
         Enrollment? enrollment = null;
         var userId = AuthCookie.UserId(User);
+        var isAdmin = userId != null && AuthCookie.IsAdmin(User);
         if (userId != null)
-            enrollment = await _store.GetEnrollmentAsync(userId, course.Id);
+        {
+            enrollment = isAdmin
+                ? await _store.EnsureCourseAccessAsync(userId, course.Id, isAdmin: true)
+                : await _store.GetEnrollmentAsync(userId, course.Id);
+        }
 
         return View(new CourseDetailViewModel
         {
@@ -33,6 +38,7 @@ public class CoursesController : Controller
             Enrolled = enrollment != null,
             Enrollment = enrollment,
             PriceLabel = MoneyFormat.Ars(course.Price),
+            AdminFreeAccess = isAdmin,
         });
     }
 }

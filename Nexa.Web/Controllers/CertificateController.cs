@@ -18,8 +18,18 @@ public class CertificateController : Controller
         var course = await _store.GetCourseBySlugAsync(slug);
         if (course == null) return NotFound();
 
-        var enrollment = await _store.GetEnrollmentAsync(AuthCookie.UserId(User)!, course.Id);
-        if (string.IsNullOrEmpty(enrollment?.CertificateCode))
+        Enrollment enrollment;
+        try
+        {
+            enrollment = await _store.EnsureCourseAccessAsync(
+                AuthCookie.UserId(User)!, course.Id, AuthCookie.IsAdmin(User));
+        }
+        catch (InvalidOperationException ex) when (ex.Message == "NOT_ENROLLED")
+        {
+            return RedirectToAction("Index", "Checkout", new { slug });
+        }
+
+        if (string.IsNullOrEmpty(enrollment.CertificateCode))
             return RedirectToAction("Index", "Learn", new { slug });
 
         return View(new CertificateViewModel

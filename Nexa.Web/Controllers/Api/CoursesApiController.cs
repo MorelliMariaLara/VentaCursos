@@ -27,13 +27,20 @@ public class CoursesApiController : ControllerBase
         if (course == null || !course.Published) return NotFound(new { error = "No encontrado" });
         Enrollment? enrollment = null;
         var userId = AuthCookie.UserId(User);
-        if (userId != null) enrollment = await _store.GetEnrollmentAsync(userId, course.Id);
+        if (userId != null)
+        {
+            if (AuthCookie.IsAdmin(User))
+                enrollment = await _store.EnsureCourseAccessAsync(userId, course.Id, isAdmin: true);
+            else
+                enrollment = await _store.GetEnrollmentAsync(userId, course.Id);
+        }
         return Ok(new
         {
             course = CourseMapper.ToPublic(course),
             enrolled = enrollment != null,
             enrollment,
             priceLabel = MoneyFormat.Ars(course.Price),
+            adminFreeAccess = AuthCookie.IsAdmin(User),
         });
     }
 
@@ -80,6 +87,8 @@ public class CoursesApiController : ControllerBase
         if (course == null) return NotFound(new { error = "Curso no encontrado" });
         try
         {
+            await _store.EnsureCourseAccessAsync(
+                AuthCookie.UserId(User)!, course.Id, AuthCookie.IsAdmin(User));
             var enrollment = await _store.MarkLessonCompleteAsync(
                 AuthCookie.UserId(User)!, course.Id, body.LessonId ?? "");
             return Ok(new { enrollment });

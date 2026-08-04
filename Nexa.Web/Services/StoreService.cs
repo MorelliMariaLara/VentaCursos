@@ -354,6 +354,34 @@ public class StoreService
         return e == null ? null : MapEnrollment(e);
     }
 
+    /// <summary>
+    /// Acceso al aula: alumno solo si compró; admin se inscribe gratis (sin orden/pago).
+    /// </summary>
+    public async Task<Enrollment> EnsureCourseAccessAsync(string userId, string courseId, bool isAdmin)
+    {
+        var existing = await _db.Enrollments
+            .Include(x => x.Progress)
+            .FirstOrDefaultAsync(x => x.UserId == userId && x.CourseId == courseId);
+        if (existing != null) return MapEnrollment(existing);
+
+        if (!isAdmin) throw new InvalidOperationException("NOT_ENROLLED");
+
+        var courseExists = await _db.Courses.AnyAsync(c => c.Id == courseId);
+        if (!courseExists) throw new InvalidOperationException("COURSE_NOT_FOUND");
+
+        var enrollment = new EnrollmentEntity
+        {
+            Id = Guid.NewGuid().ToString(),
+            UserId = userId,
+            CourseId = courseId,
+            PurchasedAt = DateTime.UtcNow,
+            OrderId = null, // acceso admin sin pago
+        };
+        _db.Enrollments.Add(enrollment);
+        await _db.SaveChangesAsync();
+        return MapEnrollment(enrollment);
+    }
+
     public async Task<List<Enrollment>> ListEnrollmentsForUserAsync(string userId)
     {
         var list = await _db.Enrollments.AsNoTracking()

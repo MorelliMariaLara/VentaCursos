@@ -27,8 +27,14 @@ public class StreamApiController : ControllerBase
         var userId = AuthCookie.UserId(User)!;
         var course = await _store.GetCourseBySlugAsync(body.Slug ?? "");
         if (course == null) return NotFound(new { error = "Curso no encontrado" });
-        if (await _store.GetEnrollmentAsync(userId, course.Id) == null)
+        try
+        {
+            await _store.EnsureCourseAccessAsync(userId, course.Id, AuthCookie.IsAdmin(User));
+        }
+        catch (InvalidOperationException ex) when (ex.Message == "NOT_ENROLLED")
+        {
             return StatusCode(403, new { error = "Sin acceso. Completá el pago para ver el contenido." });
+        }
 
         var found = CourseMapper.FindLesson(course, body.LessonId ?? "");
         if (found == null) return NotFound(new { error = "Lección no encontrada" });

@@ -41,6 +41,8 @@ public class PaymentsApiController : ControllerBase
         var userId = AuthCookie.UserId(User)!;
         var course = await _store.GetCourseBySlugAsync(body.Slug ?? "");
         if (course == null) return NotFound(new { error = "Curso no encontrado" });
+        if (AuthCookie.IsAdmin(User))
+            return Ok(new { skipPayment = true, redirect = $"/Learn?slug={course.Slug}", slug = course.Slug });
         if (await _store.GetEnrollmentAsync(userId, course.Id) != null)
             return Conflict(new { error = "Ya tenés este curso", slug = course.Slug });
 

@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Nexa.Web.Models;
 using Nexa.Web.Services;
 
 namespace Nexa.Web.Controllers.Api;
@@ -23,6 +24,8 @@ public class QuizApiController : ControllerBase
         if (course == null) return NotFound(new { error = "Curso no encontrado" });
         try
         {
+            await _store.EnsureCourseAccessAsync(
+                AuthCookie.UserId(User)!, course.Id, AuthCookie.IsAdmin(User));
             var enrollment = await _store.MarkVideoWatchedAsync(
                 AuthCookie.UserId(User)!, course.Id, body.LessonId ?? "");
             var questions = await _store.ListQuestionsForLessonAsync(body.LessonId ?? "", includeCorrect: false);
@@ -45,8 +48,16 @@ public class QuizApiController : ControllerBase
     {
         var course = await _store.GetCourseBySlugAsync(slug ?? "");
         if (course == null) return NotFound(new { error = "Curso no encontrado" });
-        var enrollment = await _store.GetEnrollmentAsync(AuthCookie.UserId(User)!, course.Id);
-        if (enrollment == null) return StatusCode(403, new { error = "Sin acceso" });
+        Enrollment enrollment;
+        try
+        {
+            enrollment = await _store.EnsureCourseAccessAsync(
+                AuthCookie.UserId(User)!, course.Id, AuthCookie.IsAdmin(User));
+        }
+        catch (InvalidOperationException ex) when (ex.Message == "NOT_ENROLLED")
+        {
+            return StatusCode(403, new { error = "Sin acceso" });
+        }
 
         var watched = enrollment.VideoWatched.TryGetValue(lessonId, out var w) && w;
         if (!watched)
@@ -73,6 +84,8 @@ public class QuizApiController : ControllerBase
         if (course == null) return NotFound(new { error = "Curso no encontrado" });
         try
         {
+            await _store.EnsureCourseAccessAsync(
+                AuthCookie.UserId(User)!, course.Id, AuthCookie.IsAdmin(User));
             var result = await _store.SubmitLessonQuizAsync(
                 AuthCookie.UserId(User)!,
                 course.Id,

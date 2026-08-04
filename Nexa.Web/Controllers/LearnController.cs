@@ -18,13 +18,19 @@ public class LearnController : Controller
         var course = await _store.GetCourseBySlugAsync(slug);
         if (course == null) return NotFound();
 
-        var enrollment = await _store.GetEnrollmentAsync(AuthCookie.UserId(User)!, course.Id);
-        if (enrollment == null) return RedirectToAction("Index", "Checkout", new { slug });
-
-        return View(new LearnViewModel
+        try
         {
-            Course = CourseMapper.ToPublic(course),
-            Enrollment = enrollment,
-        });
+            var enrollment = await _store.EnsureCourseAccessAsync(
+                AuthCookie.UserId(User)!, course.Id, AuthCookie.IsAdmin(User));
+            return View(new LearnViewModel
+            {
+                Course = CourseMapper.ToPublic(course),
+                Enrollment = enrollment,
+            });
+        }
+        catch (InvalidOperationException ex) when (ex.Message == "NOT_ENROLLED")
+        {
+            return RedirectToAction("Index", "Checkout", new { slug });
+        }
     }
 }

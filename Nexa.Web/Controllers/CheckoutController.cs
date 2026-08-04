@@ -18,6 +18,13 @@ public class CheckoutController : Controller
         var course = await _store.GetCourseBySlugAsync(slug);
         if (course == null) return NotFound();
 
+        // Admin no paga: va directo al aula
+        if (AuthCookie.IsAdmin(User))
+        {
+            await _store.EnsureCourseAccessAsync(AuthCookie.UserId(User)!, course.Id, isAdmin: true);
+            return RedirectToAction("Index", "Learn", new { slug });
+        }
+
         var enrollment = await _store.GetEnrollmentAsync(AuthCookie.UserId(User)!, course.Id);
         if (enrollment != null) return RedirectToAction("Index", "Learn", new { slug });
 
