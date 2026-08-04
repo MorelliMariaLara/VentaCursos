@@ -84,7 +84,30 @@ APP_URL=https://TU-DOMINIO
 
 En `localhost` el webhook de MP no llega; el front hace polling del estado del pago.
 
-## 6. No uses el SDK PHP
+## 6. Seguridad (recomendaciones de Mercado Pago)
+
+### Access Token solo por header
+Ya está implementado en `PaymentService.MpFetchAsync`:
+
+```http
+Authorization: Bearer {MP_ACCESS_TOKEN}
+```
+
+- **Nunca** se manda el Access Token por query string (`?access_token=`).
+- El Access Token **solo vive en el backend** (`.env` / variables de entorno). El front solo recibe la **Public Key**.
+- No lo pegues en JavaScript, URLs del navegador ni capturas públicas.
+
+### ¿Hace falta OAuth?
+**No, para SANTICAZA.** OAuth sirve cuando tu plataforma cobra **en nombre de terceros** (varios vendedores/cuentas MP ajenas).
+
+Acá hay **una sola cuenta** (la de SANTICAZA): usás el Access Token de tu propia aplicación. OAuth no aporta nada en este modelo.
+
+### Buenas prácticas extra
+1. En producción: sacar `.env` del git, rotar claves y usar secretos del hosting.
+2. Webhook solo por HTTPS público (`MP_WEBHOOK_URL` / `APP_URL`).
+3. No loguear el token completo (el arranque solo muestra un preview enmascarado).
+
+## 7. No uses el SDK PHP
 
 La doc de MP a veces muestra:
 
