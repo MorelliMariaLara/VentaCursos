@@ -13,7 +13,7 @@ export interface Lesson {
   id: string;
   title: string;
   durationMinutes: number;
-  /** Remote source used only on the server; never exposed to the client. */
+  /** Remote/local source used only on the server; never exposed to the client. */
   sourceUrl: string;
   order: number;
 }
@@ -41,6 +41,8 @@ export interface Course {
   instructor: string;
   learningOutcomes: string[];
   modules: Module[];
+  published: boolean;
+  updatedAt?: string;
 }
 
 export interface Enrollment {
@@ -51,7 +53,17 @@ export interface Enrollment {
   progress: Record<string, boolean>;
   certificateIssuedAt?: string;
   certificateCode?: string;
+  orderId?: string;
 }
+
+export type OrderStatus =
+  | "pending"
+  | "paid"
+  | "failed"
+  | "rejected"
+  | "in_process"
+  | "cancelled"
+  | "refunded";
 
 export interface Order {
   id: string;
@@ -59,8 +71,15 @@ export interface Order {
   courseId: string;
   amount: number;
   currency: string;
-  status: "paid" | "pending" | "failed";
+  status: OrderStatus;
   createdAt: string;
+  updatedAt?: string;
+  preferenceId?: string;
+  paymentId?: string;
+  paymentMethod?: string;
+  statusDetail?: string;
+  payerEmail?: string;
+  simulated?: boolean;
 }
 
 export interface DatabaseShape {

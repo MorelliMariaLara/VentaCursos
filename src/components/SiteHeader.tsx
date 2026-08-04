@@ -18,6 +18,7 @@ export async function SiteHeader() {
           {session ? (
             <>
               <Link href="/mis-cursos">Mis cursos</Link>
+              {session.role === "admin" && <Link href="/admin">Admin</Link>}
               <span className="nav-user">{session.name.split(" ")[0]}</span>
               <LogoutButton />
             </>

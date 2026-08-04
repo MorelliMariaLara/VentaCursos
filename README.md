@@ -6,7 +6,9 @@ Plataforma web para vender cursos en video y emitir certificaciones, con **repro
 
 - Catálogo de cursos y certificaciones
 - Registro / login con sesión JWT en cookie httpOnly
-- Checkout demo (pago simulado) e inscripción
+- **Checkout Bricks de Mercado Pago** (tarjetas, ticket, transferencia, dinero en cuenta)
+- Webhook de confirmación de pagos
+- Panel de administración (`/admin`) para cursos, órdenes y usuarios
 - Aula con player protegido:
   - Stream proxied por el servidor (la URL fuente nunca llega al browser)
   - Cifrado **AES-256-CTR** por sesión de lección
@@ -20,24 +22,40 @@ Plataforma web para vender cursos en video y emitir certificaciones, con **repro
 - Next.js (App Router) + TypeScript + Tailwind CSS
 - Persistencia local en `data/store.json`
 - `jose` (JWT) + `bcryptjs` (contraseñas)
+- `mercadopago` + `@mercadopago/sdk-react` (Checkout Bricks)
 
 ## Cómo correr
 
 ```bash
+cp .env.example .env.local
 npm install
 npm run dev
 ```
 
 Abrí [http://localhost:3000](http://localhost:3000).
 
-Cuenta demo: `demo@nexa.academy` / `demo1234`
+Cuentas demo:
+- Alumno: `demo@nexa.academy` / `demo1234`
+- Admin: `admin@nexa.academy` / `admin1234`
+
+## Mercado Pago
+
+1. Creá una aplicación en el [panel de desarrolladores](https://www.mercadopago.com.ar/developers/panel)
+2. Copiá la **Public Key** y el **Access Token** de prueba
+3. Configurá en `.env.local`:
+   - `NEXT_PUBLIC_MP_PUBLIC_KEY`
+   - `MP_ACCESS_TOKEN`
+   - `APP_URL` (tu dominio público)
+   - `MP_WEBHOOK_URL` (opcional, ej. `https://tu-dominio.com/api/webhooks/mercadopago`)
+4. Sin credenciales, en desarrollo podés usar **simulación de pago** (`MP_ALLOW_SIMULATE=true`)
 
 ## Flujo de prueba
 
-1. Ingresá con la cuenta demo o creá una nueva
-2. Comprá un curso desde el catálogo
-3. Entrá al aula (`/aprender/[slug]`) y reproducí una lección
+1. Ingresá como alumno o admin
+2. Comprá un curso → `/checkout/[slug]` (Payment Brick)
+3. Con pago aprobado, entrá al aula y reproducí una lección
 4. Completá todas las lecciones para emitir el certificado
+5. Como admin, gestioná catálogo y órdenes en `/admin`
 
 ## Límites reales de protección
 
