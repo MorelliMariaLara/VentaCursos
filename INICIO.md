@@ -1,70 +1,81 @@
 # Cómo abrir NEXA como proyecto de inicio
 
-Este repositorio es la **solución web NEXA**.
-
 | Archivo | Para qué |
 | --- | --- |
 | **`NEXA.sln`** | Abrir en **Visual Studio 2022** |
-| **`Nexa.Web.esproj`** | Proyecto web (marcá como *Startup Project*) |
-| **`NEXA.code-workspace`** | Abrir en Cursor / VS Code |
+| **`Nexa.Web.esproj`** | Proyecto web → *Set as Startup Project* |
 | **`iniciar.bat`** | Arranque rápido en Windows |
+| **`INICIO.md`** | Esta guía |
 
 ---
 
-## Visual Studio 2022 (recomendado si usás VS)
+## Requisito obligatorio
 
-1. Instalá la workload **Node.js development** (Visual Studio Installer)  
-2. Abrí **`NEXA.sln`**  
-3. En el Explorador de soluciones, clic derecho en **`Nexa.Web`** → **Set as Startup Project**  
-4. Pulsá **F5** (o el botón Start)  
-5. Se abre **http://localhost:3000**
+- **Node.js 20 o superior (LTS)** → https://nodejs.org  
+- En el instalador, marcá la opción de agregar Node al **PATH**  
+- Cerrá y reabrí Visual Studio / la terminal después de instalarlo  
 
-Si es la primera vez, VS ejecuta `npm install` y luego `npm run solution:start`.
+Comprobá en CMD o PowerShell:
 
----
-
-## Cursor / VS Code
-
-1. Abrí **`NEXA.code-workspace`**  
-2. Terminal:
-
-```bash
-npm install
-npm run solution:start
+```powershell
+node -v
+npm -v
 ```
 
-3. O Run and Debug → **NEXA Web (proyecto de inicio)**
+Tiene que mostrar algo como `v20.x` o `v22.x`. Si dice que no reconoce `node`, el PATH no quedó bien.
 
 ---
 
-## Doble clic (Windows)
+## Si `npm install` sale con código 1
 
-Ejecutá **`iniciar.bat`**.
+En la carpeta del proyecto (`VentaCursos`) ejecutá:
+
+```powershell
+cd "C:\Users\Maria Lara\source\repos\VentaCursos"
+git pull origin main
+node -v
+npm -v
+npm cache clean --force
+Remove-Item -Recurse -Force node_modules -ErrorAction SilentlyContinue
+npm install --legacy-peer-deps
+```
+
+Si sigue fallando, ejecutá **`iniciar.bat`** (hace el mismo proceso y muestra el error).
+
+Causas frecuentes:
+1. Node menor a 20  
+2. No se hizo `git pull` y faltan archivos  
+3. Antivirus bloqueando `node_modules`  
+4. Instalación de Node sin reiniciar Visual Studio  
 
 ---
 
-## Cuentas de prueba
+## Visual Studio 2022
+
+1. Workload **Node.js development** (Visual Studio Installer)  
+2. Abrí **`NEXA.sln`**  
+3. Clic derecho en **`Nexa.Web`** → **Set as Startup Project**  
+4. **F5**  
+5. Abrí **http://localhost:3000**
+
+El proyecto ahora usa `npm run dev` (sin bash), compatible con Windows.
+
+---
+
+## Alternativa sin Visual Studio
+
+Doble clic en **`iniciar.bat`**, o:
+
+```powershell
+npm install --legacy-peer-deps
+npm run dev
+```
+
+---
+
+## Cuentas
 
 | Rol | Email | Contraseña |
 | --- | --- | --- |
 | Alumno | `demo@nexa.academy` | `demo1234` |
 | Admin | `admin@nexa.academy` | `admin1234` |
-
----
-
-## URLs principales
-
-| URL | Qué es |
-| --- | --- |
-| `/` | Landing |
-| `/cursos` | Catálogo |
-| `/checkout/[slug]` | Mercado Pago |
-| `/aprender/[slug]` | Aula cifrada |
-| `/admin` | Panel admin |
-
----
-
-## Requisito
-
-- **Node.js 20+**: https://nodejs.org  
-- En Visual Studio: workload **Node.js development**
