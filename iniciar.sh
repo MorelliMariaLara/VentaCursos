@@ -2,4 +2,4 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 if [[ ! -f .env && -f .env.example ]]; then cp .env.example .env; fi
-exec node server/index.js
+exec dotnet run --project Nexa.Web

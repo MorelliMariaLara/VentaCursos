@@ -1,14 +1,26 @@
-# Solución NEXA
+# Solución NEXA (ASP.NET MVC + API)
 
-Sin `npm install`. Arranca con Node nativo.
+Una sola solución Visual Studio con arquitectura MVC y APIs REST.
 
 ```text
-server/   → API + servidor HTTP
-public/   → HTML/CSS/JS
-data/     → store.json
-content/videos/ → videos locales
+NEXA.sln
+└── Nexa.Web          → ASP.NET Core 8 (MVC + Web API)
+    ├── Controllers   → páginas (Home, Courses, Account, Learn, …)
+    ├── Controllers/Api → /api/auth, /api/courses, /api/payments, …
+    ├── Models        → entidades y ViewModels
+    ├── Services      → persistencia JSON, Mercado Pago, stream cifrado
+    └── Views         → Razor + layout compartido
 ```
 
+## Arranque
+
 ```bash
-node server/index.js
+dotnet run --project Nexa.Web
+# → http://localhost:5000
 ```
+
+## Flujo
+
+1. **MVC** renderiza catálogo, login, aula y admin.
+2. **APIs** atienden checkout (preferencia/pago), sesión de video y progreso.
+3. Los datos viven en `data/store.json` (sin SQL).

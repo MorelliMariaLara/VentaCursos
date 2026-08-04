@@ -1,0 +1,48 @@
+@model CourseDetailViewModel
+@{
+    ViewData["Title"] = Model.Course.Title;
+    var c = Model.Course;
+}
+<section class="section">
+    <div class="wrap grid-2">
+        <div>
+            <p class="hint">@c.Category · @c.Level · @c.DurationHours h</p>
+            <h2>@c.Title</h2>
+            <p class="lead">@c.Subtitle</p>
+            <p>@c.Description</p>
+            <ul>
+                @foreach (var o in c.LearningOutcomes)
+                {
+                    <li>@o</li>
+                }
+            </ul>
+        </div>
+        <aside class="panel">
+            <div class="price" style="font-size:1.4rem;margin-bottom:0.8rem">@Model.PriceLabel</div>
+            <p class="hint">Instructor: @c.Instructor</p>
+            <div style="margin-top:1rem">
+                @if (Model.Enrolled)
+                {
+                    <a class="btn btn-primary" asp-controller="Learn" asp-action="Index" asp-route-slug="@c.Slug">Ir al aula</a>
+                    @if (!string.IsNullOrEmpty(Model.Enrollment?.CertificateCode))
+                    {
+                        <a class="btn btn-ghost" asp-controller="Certificate" asp-action="Index" asp-route-slug="@c.Slug">Ver certificado</a>
+                    }
+                }
+                else
+                {
+                    <a class="btn btn-accent" asp-controller="Checkout" asp-action="Index" asp-route-slug="@c.Slug">Comprar</a>
+                }
+            </div>
+            <div style="margin-top:1.2rem">
+                @foreach (var m in c.Modules)
+                {
+                    <div style="margin-bottom:0.8rem">
+                        <strong>@m.Title</strong>
+                        <div class="hint">@string.Join(" · ", m.Lessons.Select(l => l.Title))</div>
+                    </div>
+                }
+            </div>
+        </aside>
+    </div>
+</section>

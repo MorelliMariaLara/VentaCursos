@@ -1,0 +1,81 @@
+@model AdminDashboardViewModel
+@{
+    ViewData["Title"] = "Admin";
+}
+<section class="section">
+    <div class="wrap">
+        <h2>Admin NEXA</h2>
+        <p class="lead">Resumen, pedidos, usuarios y cursos.</p>
+        @if (!string.IsNullOrEmpty(Model.Error))
+        {
+            <p class="error">@Model.Error</p>
+        }
+        <div class="stats">
+            <div class="stat"><strong>@Model.Users</strong>usuarios</div>
+            <div class="stat"><strong>@Model.Courses</strong>cursos</div>
+            <div class="stat"><strong>@Model.Enrollments</strong>inscripciones</div>
+            <div class="stat"><strong>@MoneyFormat.Ars(Model.Revenue)</strong>ingresos</div>
+        </div>
+        <div class="grid-2">
+            <div class="panel">
+                <h3>Pedidos</h3>
+                <div style="overflow:auto">
+                    <table class="table">
+                        <tr><th>Fecha</th><th>Estado</th><th>Monto</th></tr>
+                        @foreach (var o in Model.RecentOrders)
+                        {
+                            <tr>
+                                <td>@DateTime.Parse(o.CreatedAt).ToLocalTime().ToString("g", System.Globalization.CultureInfo.GetCultureInfo("es-AR"))</td>
+                                <td>@o.Status</td>
+                                <td>@MoneyFormat.Ars(o.Amount)</td>
+                            </tr>
+                        }
+                    </table>
+                </div>
+            </div>
+            <div class="panel">
+                <h3>Usuarios</h3>
+                <div style="overflow:auto">
+                    <table class="table">
+                        <tr><th>Nombre</th><th>Email</th><th>Rol</th></tr>
+                        @foreach (var u in Model.UserList)
+                        {
+                            <tr>
+                                <td>@u.Name</td>
+                                <td>@u.Email</td>
+                                <td>@u.Role</td>
+                            </tr>
+                        }
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div class="panel" style="margin-top:1rem">
+            <h3>Cursos</h3>
+            @foreach (var c in Model.CourseList)
+            {
+                <div style="display:flex;justify-content:space-between;gap:1rem;padding:0.45rem 0;border-bottom:1px solid var(--line)">
+                    <div>
+                        <strong>@c.Title</strong>
+                        <div class="hint">@c.Slug · @MoneyFormat.Ars(c.Price)</div>
+                    </div>
+                    <form asp-action="DeleteCourse" method="post" onsubmit="return confirm('¿Borrar curso?')">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="id" value="@c.Id" />
+                        <button class="btn btn-ghost" type="submit">Borrar</button>
+                    </form>
+                </div>
+            }
+            <hr style="border:0;border-top:1px solid var(--line);margin:1.2rem 0" />
+            <h3>Nuevo curso rápido</h3>
+            <form class="form" asp-action="CreateCourse" method="post" style="max-width:none">
+                @Html.AntiForgeryToken()
+                <label>Título <input name="Title" value="@Model.NewCourse.Title" required /></label>
+                <label>Slug <input name="Slug" value="@Model.NewCourse.Slug" required placeholder="mi-curso" /></label>
+                <label>Precio ARS <input name="Price" type="number" value="@Model.NewCourse.Price" required /></label>
+                <label>Descripción <textarea name="Description" rows="3">@Model.NewCourse.Description</textarea></label>
+                <button class="btn btn-primary" type="submit">Guardar curso</button>
+            </form>
+        </div>
+    </div>
+</section>

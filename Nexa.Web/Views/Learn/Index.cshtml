@@ -1,0 +1,99 @@
+@model LearnViewModel
+@{
+    ViewData["Title"] = "Aula";
+    var c = Model.Course;
+    var progress = Model.Enrollment.Progress ?? new Dictionary<string, bool>();
+}
+<section class="section">
+    <div class="wrap grid-2">
+        <div>
+            <h2>@c.Title</h2>
+            <p class="lead" id="lessonTitle">Elegí una lección</p>
+            <div class="player-shell">
+                <video id="video" controls controlsList="nodownload" disablePictureInPicture playsinline></video>
+                <div class="watermark" id="wm"></div>
+            </div>
+            <button class="btn btn-primary" id="completeBtn" type="button" style="margin-top:0.8rem" disabled>Marcar lección completa</button>
+            <p class="hint" id="msg"></p>
+        </div>
+        <aside class="panel">
+            <h3 style="margin-top:0">Lecciones</h3>
+            <div class="lesson-list" id="lessons">
+                @foreach (var m in c.Modules)
+                {
+                    <div style="margin-bottom:0.7rem">
+                        <strong>@m.Title</strong>
+                        @foreach (var l in m.Lessons)
+                        {
+                            var done = progress.TryGetValue(l.Id, out var d) && d;
+                            <button class="lesson-btn @(done ? "done" : "")" data-id="@l.Id" type="button">
+                                @l.Title · @l.DurationMinutes min
+                            </button>
+                        }
+                    </div>
+                }
+            </div>
+            <p style="margin-top:1rem">
+                <a id="certLink" class="btn btn-ghost" asp-controller="Certificate" asp-action="Index" asp-route-slug="@c.Slug"
+                   style="@(string.IsNullOrEmpty(Model.Enrollment.CertificateCode) ? "display:none" : "display:inline-flex")">
+                    Ver certificado
+                </a>
+            </p>
+        </aside>
+    </div>
+</section>
+@section Scripts {
+<script src="~/js/player.js" asp-append-version="true"></script>
+<script>
+  const slug = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(c.Slug));
+  let currentLesson = null;
+  let progress = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(progress));
+
+  document.addEventListener("contextmenu", (e) => e.preventDefault());
+
+  document.querySelectorAll(".lesson-btn").forEach((btn) => {
+    btn.onclick = () => playLesson(btn.dataset.id, btn);
+  });
+
+  document.getElementById("completeBtn").onclick = async () => {
+    if (!currentLesson) return;
+    const result = await api("/api/progress", {
+      method: "POST",
+      body: JSON.stringify({ slug, lessonId: currentLesson }),
+    });
+    progress = result.enrollment.progress || {};
+    document.querySelectorAll(".lesson-btn").forEach((b) => {
+      b.classList.toggle("done", Boolean(progress[b.dataset.id]));
+    });
+    document.getElementById("msg").textContent = "Lección marcada.";
+    if (result.enrollment.certificateCode) {
+      document.getElementById("certLink").style.display = "inline-flex";
+      document.getElementById("msg").textContent = "¡Certificado listo!";
+    }
+  };
+
+  async function playLesson(lessonId, btn) {
+    currentLesson = lessonId;
+    document.querySelectorAll(".lesson-btn").forEach((b) => b.classList.remove("active"));
+    if (btn) btn.classList.add("active");
+    document.getElementById("completeBtn").disabled = true;
+    document.getElementById("msg").textContent = "Cargando video cifrado...";
+    try {
+      const session = await api("/api/stream/session", {
+        method: "POST",
+        body: JSON.stringify({ slug, lessonId }),
+      });
+      document.getElementById("lessonTitle").textContent = session.lesson.moduleTitle + " · " + session.lesson.title;
+      document.getElementById("wm").textContent = "NEXA · " + session.watermark;
+      await loadEncryptedVideo(document.getElementById("video"), session);
+      document.getElementById("completeBtn").disabled = false;
+      document.getElementById("msg").textContent = "";
+    } catch (e) {
+      document.getElementById("msg").textContent = e.message;
+    }
+  }
+
+  const first = document.querySelector(".lesson-btn");
+  if (first) playLesson(first.dataset.id, first);
+</script>
+}

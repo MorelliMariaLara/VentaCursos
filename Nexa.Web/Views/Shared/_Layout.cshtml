@@ -1,0 +1,52 @@
+﻿@{
+    var userName = User.Identity?.IsAuthenticated == true ? User.Identity.Name : null;
+    var isAdmin = User.IsInRole("admin");
+}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>@(ViewData["Title"] ?? "NEXA") · NEXA</title>
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+</head>
+<body>
+    <header class="site-header">
+        <div class="wrap">
+            <a class="brand" asp-controller="Home" asp-action="Index">NEXA</a>
+            <nav class="nav">
+                <a asp-controller="Courses" asp-action="Index">Cursos</a>
+                @if (userName != null)
+                {
+                    <a asp-controller="MyCourses" asp-action="Index">Mis cursos</a>
+                }
+                @if (isAdmin)
+                {
+                    <a asp-controller="Admin" asp-action="Index">Admin</a>
+                }
+                @if (userName != null)
+                {
+                    <span class="hint">@userName</span>
+                    <form asp-controller="Account" asp-action="Logout" method="post" style="display:inline">
+                        @Html.AntiForgeryToken()
+                        <button class="btn btn-ghost" type="submit">Salir</button>
+                    </form>
+                }
+                else
+                {
+                    <a asp-controller="Account" asp-action="Login">Ingresar</a>
+                    <a class="btn btn-primary" asp-controller="Account" asp-action="Register">Crear cuenta</a>
+                }
+            </nav>
+        </div>
+    </header>
+    <main>
+        @RenderBody()
+    </main>
+    <footer class="site-footer">
+        <div class="wrap">NEXA · solución ASP.NET MVC + API · demo@nexa.academy / demo1234</div>
+    </footer>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

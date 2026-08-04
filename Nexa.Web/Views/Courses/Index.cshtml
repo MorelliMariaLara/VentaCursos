@@ -1,0 +1,24 @@
+@model List<PublicCourse>
+@{
+    ViewData["Title"] = "Cursos";
+}
+<section class="section">
+    <div class="wrap">
+        <h2>Cursos y certificaciones</h2>
+        <p class="lead">Elegí un programa y pagá para desbloquear el aula.</p>
+        <div class="course-list">
+            @foreach (var c in Model)
+            {
+                <a class="course-row" asp-controller="Courses" asp-action="Details" asp-route-slug="@c.Slug">
+                    <span class="bar" style="background:@c.ThumbnailGradient"></span>
+                    <div>
+                        <h3>@c.Title</h3>
+                        <p>@c.Subtitle</p>
+                        <div class="meta">@c.Category · @c.Level · certificado incluido</div>
+                    </div>
+                    <div class="price">@MoneyFormat.Ars(c.Price)</div>
+                </a>
+            }
+        </div>
+    </div>
+</section>

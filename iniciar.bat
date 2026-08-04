@@ -3,20 +3,20 @@ setlocal EnableExtensions
 cd /d "%~dp0"
 
 echo ================================
-echo  NEXA - inicio local
+echo  NEXA - ASP.NET MVC + API
 echo ================================
 
-where node >nul 2>nul
+where dotnet >nul 2>nul
 if errorlevel 1 (
-  echo ERROR: Instala Node.js LTS desde https://nodejs.org
-  echo No hace falta npm install.
+  echo ERROR: Instala .NET 8 SDK desde
+  echo https://dotnet.microsoft.com/download/dotnet/8.0
   pause
   exit /b 1
 )
 
 if not exist ".env" if exist ".env.example" copy /Y ".env.example" ".env" >nul
 
-echo Abriendo http://localhost:3000
-start "" "http://localhost:3000"
-node server\index.js
+echo Abriendo http://localhost:5000
+start "" "http://localhost:5000"
+dotnet run --project Nexa.Web
 pause

@@ -1,0 +1,21 @@
+@model LoginViewModel
+@{
+    ViewData["Title"] = "Ingresar";
+}
+<section class="section">
+    <div class="wrap">
+        <h2>Ingresar</h2>
+        <p class="lead">Demo: demo@nexa.academy / demo1234</p>
+        <form class="form panel" asp-action="Login" method="post">
+            @Html.AntiForgeryToken()
+            <label>Email <input asp-for="Email" type="email" required /></label>
+            <label>Contraseña <input asp-for="Password" type="password" required /></label>
+            <button class="btn btn-primary" type="submit">Entrar</button>
+            @if (!string.IsNullOrEmpty(Model.Error))
+            {
+                <p class="error">@Model.Error</p>
+            }
+            <p class="hint">¿No tenés cuenta? <a asp-action="Register">Registrate</a></p>
+        </form>
+    </div>
+</section>

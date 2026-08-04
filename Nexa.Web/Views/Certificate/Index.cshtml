@@ -1,0 +1,17 @@
+@model CertificateViewModel
+@{
+    ViewData["Title"] = "Certificado";
+}
+<section class="section">
+    <div class="wrap">
+        <div class="panel" style="max-width:720px;margin:0 auto;text-align:center;padding:2.5rem 1.5rem">
+            <div class="brand" style="font-size:2rem">NEXA</div>
+            <p class="hint">Certifica que</p>
+            <h2 style="margin:0.2rem 0 0.8rem">@Model.StudentName</h2>
+            <p>completó el programa</p>
+            <h3 style="font-family:Fraunces,serif;font-size:1.6rem">@Model.Course.CertificateName</h3>
+            <p class="hint">Código: @Model.CertificateCode</p>
+            <p class="hint">Emitido: @DateTime.Parse(Model.IssuedAt).ToLocalTime().ToString("d", System.Globalization.CultureInfo.GetCultureInfo("es-AR"))</p>
+        </div>
+    </div>
+</section>

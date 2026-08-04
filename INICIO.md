@@ -1,18 +1,24 @@
 # Cómo iniciar NEXA
 
-**No hace falta `npm install`.** Solo Node.js 20+.
+Solución **ASP.NET Core MVC + APIs**. Necesitás [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0).
 
-## PowerShell
+## PowerShell / CMD
 
 ```powershell
 cd "C:\Users\Maria Lara\source\repos\VentaCursos"
 git pull origin main
-node server/index.js
+dotnet run --project Nexa.Web
 ```
 
-Abrí http://localhost:3000
+Abrí http://localhost:5000
 
 O doble clic en **`iniciar.bat`**.
+
+## Visual Studio 2022
+
+1. Abrí `NEXA.sln`
+2. Proyecto de inicio: `Nexa.Web`
+3. **F5**
 
 ## Cuentas
 
@@ -20,7 +26,3 @@ O doble clic en **`iniciar.bat`**.
 | --- | --- | --- |
 | Alumno | `demo@nexa.academy` | `demo1234` |
 | Admin | `admin@nexa.academy` | `admin1234` |
-
-## Visual Studio
-
-Abrí `NEXA.sln` → Startup Project `Nexa.Web` → F5.
